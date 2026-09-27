@@ -26,7 +26,6 @@ import Cardano.Crypto.Libsodium as NaCl
 import Cardano.Crypto.Libsodium.MLockedSeed
 import Criterion
 import qualified Data.ByteString as BS (ByteString)
-import Data.Either (fromRight)
 import Data.Kind (Type)
 import GHC.TypeLits (KnownNat)
 import System.IO.Unsafe (unsafePerformIO)
@@ -49,6 +48,16 @@ benchmarks =
     , benchKES @Proxy @(CompactSum7KES Ed25519DSIGN Blake2b_256) Proxy "CompactSum7KES"
     ]
 
+-- | Benchmark the four KES operations for one scheme.
+--
+-- Key generation is expensive for the sum compositions (2^depth base key
+-- generations), so every input a benchmark needs is prepared in an 'env'
+-- and only the operation under test runs inside the timed region.
+--
+-- Key evolution is timed twice. Evolving from period 0 is the cheapest case:
+-- one base key generation at the bottom of the tree. Evolving from the last
+-- period of the first half regenerates the whole second-half subtree and is
+-- the most expensive step of the key's lifetime.
 {-# NOINLINE benchKES #-}
 benchKES ::
   forall (proxy :: forall k. k -> Type) v.
@@ -56,6 +65,7 @@ benchKES ::
   , ContextKES v ~ ()
   , Signable v BS.ByteString
   , NFData (SignKeyKES v)
+  , NFData (VerKeyKES v)
   , NFData (SigKES v)
   ) =>
   proxy v ->
@@ -67,21 +77,43 @@ benchKES _ lbl =
     [ bench "genKey" $
         nfIO $
           genKeyKES @v testSeedML >>= forgetSignKeyKES @v
-    , bench "signKES" $
-        nfIO $
-          (\sk -> do sig <- signKES @v () 0 typicalMsg sk; forgetSignKeyKES sk; return sig)
-            =<< genKeyKES @v testSeedML
-    , bench "verifyKES" $
-        nfIO $ do
-          signKey <- genKeyKES @v testSeedML
-          sig <- signKES @v () 0 typicalMsg signKey
-          verKey <- deriveVerKeyKES signKey
-          forgetSignKeyKES signKey
-          return . fromRight $ verifyKES @v () verKey 0 typicalMsg sig
-    , bench "updateKES" $
-        nfIO $ do
-          signKey <- genKeyKES @v testSeedML
-          sk' <- fromJust <$> updateKES () signKey 0
-          forgetSignKeyKES signKey
-          return sk'
+    , env (genKeyKES @v testSeedML) $ \signKey ->
+        bench "signKES" $
+          nfIO $
+            signKES @v () 0 typicalMsg signKey
+    , env genVerKeyAndSig $ \ ~(verKey, sig) ->
+        bench "verifyKES" $
+          nf (either error id . verifyKES @v () verKey 0 typicalMsg) sig
+    , env (genKeyKES @v testSeedML) $ \signKey ->
+        bench "updateKES" $
+          nfIO $
+            updateKES @v () signKey 0 >>= forgetSignKeyKES @v . fromJust
+    , env (evolveTo worstPeriod =<< genKeyKES @v testSeedML) $ \signKey ->
+        bench ("updateKES (period " ++ show worstPeriod ++ ")") $
+          nfIO $
+            updateKES @v () signKey worstPeriod >>= forgetSignKeyKES @v . fromJust
     ]
+  where
+    genVerKeyAndSig :: IO (VerKeyKES v, SigKES v)
+    genVerKeyAndSig = do
+      signKey <- genKeyKES @v testSeedML
+      sig <- signKES @v () 0 typicalMsg signKey
+      verKey <- deriveVerKeyKES signKey
+      forgetSignKeyKES signKey
+      return (verKey, sig)
+
+    -- The evolution from this period to the next regenerates the largest
+    -- subtree: for a sum composition with T periods, the step from T/2 - 1
+    -- to T/2 generates a fresh key for the whole second half.
+    worstPeriod :: Period
+    worstPeriod = totalPeriodsKES (Proxy @v) `div` 2 - 1
+
+    evolveTo :: Period -> SignKeyKES v -> IO (SignKeyKES v)
+    evolveTo target = go 0
+      where
+        go t sk
+          | t >= target = return sk
+          | otherwise = do
+              sk' <- fromJust <$> updateKES @v () sk t
+              forgetSignKeyKES sk
+              go (t + 1) sk'
