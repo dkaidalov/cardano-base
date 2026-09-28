@@ -10,6 +10,7 @@ import Cardano.Crypto.DSIGN.BLS12381 as X
 import Cardano.Crypto.DSIGN.Class as X
 import Cardano.Crypto.DSIGN.Ed25519 as X
 import Cardano.Crypto.DSIGN.Ed448 as X
+import Cardano.Crypto.DSIGN.Falcon512 as X
 import Cardano.Crypto.DSIGN.MLDSA44 as X
 import Cardano.Crypto.DSIGN.Mock as X
 import Cardano.Crypto.DSIGN.NeverUsed as X

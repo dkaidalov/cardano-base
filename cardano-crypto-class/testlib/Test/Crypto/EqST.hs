@@ -12,7 +12,9 @@ import GHC.TypeLits (KnownNat)
 
 import Cardano.Crypto.DSIGN.Class
 import Cardano.Crypto.DSIGN.Ed25519
+import Cardano.Crypto.DSIGN.Falcon512
 import Cardano.Crypto.DSIGN.MLDSA44
+import Cardano.Crypto.Falcon.Constants (FALCON512_SIGNKEYBYTES)
 import Cardano.Crypto.KES.Simple
 import Cardano.Crypto.Libsodium.MLockedBytes.Internal
 import Cardano.Crypto.Libsodium.MLockedSeed
@@ -91,6 +93,11 @@ deriving via
   (MLockedSizedBytes MLDSA44_SIGNKEYBYTES)
   instance
     EqST (SignKeyDSIGNM MLDSA44DSIGN)
+
+deriving via
+  (MLockedSizedBytes FALCON512_SIGNKEYBYTES)
+  instance
+    EqST (SignKeyDSIGNM Falcon512DSIGN)
 
 instance EqST (SignKeyDSIGNM d) => EqST (SignKeyKES (SimpleKES d t)) where
   equalsM (ThunkySignKeySimpleKES a) (ThunkySignKeySimpleKES b) =

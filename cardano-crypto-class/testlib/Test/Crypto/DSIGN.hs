@@ -54,6 +54,7 @@ import Cardano.Crypto.DSIGN (
   Ed25519DSIGN,
   Ed448DSIGN,
   MLDSA44DSIGN,
+  Falcon512DSIGN,
   aggregateVerKeysDSIGN,
   seedSizeDSIGN,
 
@@ -189,6 +190,9 @@ tests lock =
        testDSIGNAlgorithm (Proxy @Ed25519DSIGN) (arbitrary @Message) "Ed25519DSIGN"
        testDSIGNAlgorithm (Proxy @Ed448DSIGN) (arbitrary @Message) "Ed448DSIGN"
        testDSIGNAlgorithm (Proxy @MLDSA44DSIGN) (arbitrary @Message) "MLDSA44DSIGN"
+       -- Falcon512DSIGN is not in this suite: it forces 10000 cases per
+       -- property and a Falcon key generation is about 10 ms. The pure API is
+       -- covered by the UnsoundPure paths of the KES suite instead.
        testDSIGNAlgorithmWithContext (Proxy @BLS12381MinVerKeyDSIGN) True (pure ()) blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinVerKeyDSIGN"
        testDSIGNAlgorithmWithContext (Proxy @BLS12381MinSigDSIGN) True (pure ()) blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinSigDSIGN"
 #ifdef SECP256K1_ENABLED
@@ -205,6 +209,9 @@ tests lock =
       testDSIGNMAlgorithm lock (Proxy @Ed25519DSIGN) "Ed25519DSIGN"
       -- 3904-byte in-memory sign key, see 'testDSIGNMAlgorithmWith'.
       testDSIGNMAlgorithmWith False lock (Proxy @MLDSA44DSIGN) "MLDSA44DSIGN"
+      -- 2210-byte in-memory sign key, see 'testDSIGNMAlgorithmWith'.
+      modifyMaxSuccess (const 50) $
+        testDSIGNMAlgorithmWith False lock (Proxy @Falcon512DSIGN) "Falcon512DSIGN"
      describe "Aggregatable" $ do
       testDSIGNAggregatableWithContext (Proxy @(BLS12381DSIGN Curve1)) (pure ()) blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinVerKeyDSIGN"
       testDSIGNAggregatableWithContext (Proxy @(BLS12381DSIGN Curve2)) (pure ()) blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinSigDSIGN"

@@ -112,6 +112,11 @@ tests lock =
     testKESAlgorithm @(HashedCompactSum2KES MLDSA44DSIGN Blake2b_256)
       lock
       "HashedCompactSum2KES MLDSA44"
+    -- Falcon key generation is about 10 ms; a two-period key is 2 keygens.
+    modifyMaxSuccess (const 50) $
+      testKESAlgorithm @(HashedCompactSum1KES Falcon512DSIGN Blake2b_256)
+        lock
+        "HashedCompactSum1KES Falcon512"
     testSigSizes
 
 -- | Signature sizes of the 64-period sums, in bytes. Only the innermost level
@@ -134,6 +139,8 @@ testSigSizes =
       fixedSize (Proxy @(SigKES (CompactSum6KES MLDSA44DSIGN Blake2b_256))) `shouldBe` 5204
     it "HashedCompactSum6KES MLDSA44 = 3924" $
       fixedSize (Proxy @(SigKES (HashedCompactSum6KES MLDSA44DSIGN Blake2b_256))) `shouldBe` 3924
+    it "HashedCompactSum6KES Falcon512 = 1755" $
+      fixedSize (Proxy @(SigKES (HashedCompactSum6KES Falcon512DSIGN Blake2b_256))) `shouldBe` 1755
 
 --------------------------------------------------------------------------------
 -- Show and Eq instances

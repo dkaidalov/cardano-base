@@ -12,6 +12,13 @@
   aliases for compact sums over it. For a DSIGN scheme with a large key this
   shrinks the compact sum signature by `|vk| - |hash|`: 5204 to 3924 bytes for
   ML-DSA-44 with Blake2b-256.
+* Add `Falcon512DSIGN`, a Falcon-512 `DSIGNAlgorithm` and `DSIGNMAlgorithm`
+  instance over vendored PQClean `falcon-padded-512` sources
+  (`cbits/falcon-padded-512`, portable build by default, AVX2 build with the
+  `pq-native-backends` flag, which replaces `mldsa-native-backend`). Key
+  generation is seed-derived and signing deterministic; signatures use the
+  padded 666-byte encoding. `HashedCompactSum6KES Falcon512DSIGN Blake2b_256`
+  signatures are 1755 bytes.
 * Fix a segfault at program exit in the mlocked memory pools: a block's
   erase finalizer could run after its page had already been unmapped by
   `sodium_free`, since GHC orders finalizers arbitrarily when a page and its

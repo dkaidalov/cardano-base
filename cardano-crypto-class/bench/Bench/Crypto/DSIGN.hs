@@ -21,6 +21,7 @@ import Control.Exception (evaluate)
 
 import Cardano.Crypto.DSIGN.Class
 import Cardano.Crypto.DSIGN.Ed25519
+import Cardano.Crypto.DSIGN.Falcon512
 import Cardano.Crypto.DSIGN.MLDSA44
 #ifdef SECP256K1_ENABLED
 import Cardano.Crypto.DSIGN.EcdsaSecp256k1
@@ -37,6 +38,7 @@ benchmarks :: Benchmark
 benchmarks = bgroup "DSIGN"
   [ benchDSIGN (Proxy :: Proxy Ed25519DSIGN) "Ed25519"
   , benchDSIGN (Proxy :: Proxy MLDSA44DSIGN) "MLDSA44"
+  , benchDSIGN (Proxy :: Proxy Falcon512DSIGN) "Falcon512"
   , benchDSIGN (Proxy :: Proxy BLS12381MinVerKeyDSIGN) "BLS12381MinVerKey"
   , benchDSIGN (Proxy :: Proxy BLS12381MinSigDSIGN) "BLS12381MinSig"
   , benchAggDSIGN (Proxy :: Proxy BLS12381MinVerKeyDSIGN) "BLS12381MinVerKey"
@@ -115,6 +117,9 @@ instance ExampleSignable Ed25519DSIGN ByteString where
 instance ExampleSignable MLDSA44DSIGN ByteString where
   exampleSignableFrom _ = id
 
+instance ExampleSignable Falcon512DSIGN ByteString where
+  exampleSignableFrom _ = id
+
 instance ExampleSignable (BLS12381DSIGN curve) ByteString where
   exampleSignableFrom _ = id
 
@@ -136,6 +141,9 @@ instance ExampleContext Ed25519DSIGN where
   exampleContext _ = ()
 
 instance ExampleContext MLDSA44DSIGN where
+  exampleContext _ = ()
+
+instance ExampleContext Falcon512DSIGN where
   exampleContext _ = ()
 
 #ifdef SECP256K1_ENABLED
