@@ -19,6 +19,13 @@
   generation is seed-derived and signing deterministic; signatures use the
   padded 666-byte encoding. `HashedCompactSum6KES Falcon512DSIGN Blake2b_256`
   signatures are 1755 bytes.
+* Add `SlhDsaBb6DSIGN`, SLH-DSA (FIPS 205 mechanisms) with the reduced-budget
+  parameter set bb-6 of Fluhrer and Dang (n = 16, h = 9, d = 1, FORS 11 x
+  2^14, w = 16, SHA2-simple; 2^10 signatures per key; published but not
+  standardised), over vendored SPHINCS+ reference sources
+  (`cbits/sphincsplus-ref`, or `cbits/sphincsplus-sha2-avx2` with
+  `pq-native-backends`). Deterministic signing, seed-derived key generation.
+  `HashedCompactSum6KES SlhDsaBb6DSIGN Blake2b_256` signatures are 3584 bytes.
 * Fix a segfault at program exit in the mlocked memory pools: a block's
   erase finalizer could run after its page had already been unmapped by
   `sodium_free`, since GHC orders finalizers arbitrarily when a page and its

@@ -117,6 +117,11 @@ tests lock =
       testKESAlgorithm @(HashedCompactSum1KES Falcon512DSIGN Blake2b_256)
         lock
         "HashedCompactSum1KES Falcon512"
+    -- bb-6: about 60 ms per key generation and 0.2 s per signature.
+    modifyMaxSuccess (const 3) $
+      testKESAlgorithm @(HashedCompactSum1KES SlhDsaBb6DSIGN Blake2b_256)
+        lock
+        "HashedCompactSum1KES SlhDsaBb6"
     testSigSizes
 
 -- | Signature sizes of the 64-period sums, in bytes. Only the innermost level
@@ -141,6 +146,8 @@ testSigSizes =
       fixedSize (Proxy @(SigKES (HashedCompactSum6KES MLDSA44DSIGN Blake2b_256))) `shouldBe` 3924
     it "HashedCompactSum6KES Falcon512 = 1755" $
       fixedSize (Proxy @(SigKES (HashedCompactSum6KES Falcon512DSIGN Blake2b_256))) `shouldBe` 1755
+    it "HashedCompactSum6KES SlhDsaBb6 = 3584" $
+      fixedSize (Proxy @(SigKES (HashedCompactSum6KES SlhDsaBb6DSIGN Blake2b_256))) `shouldBe` 3584
 
 --------------------------------------------------------------------------------
 -- Show and Eq instances

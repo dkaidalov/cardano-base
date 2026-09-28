@@ -42,6 +42,22 @@ extra-source-files:
   cbits/falcon-padded-512/clean/*.h
   cbits/falcon-padded-512/avx2/*.c
   cbits/falcon-padded-512/avx2/*.h
+  cbits/cardano_slhdsa_bb6.h
+  cbits/sphincsplus-ref/LICENSE
+  cbits/sphincsplus-ref/LICENSES/*
+  cbits/sphincsplus-ref/UPSTREAM_COMMIT
+  cbits/sphincsplus-ref/Makefile
+  cbits/sphincsplus-ref/README.md
+  cbits/sphincsplus-ref/*.c
+  cbits/sphincsplus-ref/*.h
+  cbits/sphincsplus-ref/params/*.h
+  cbits/sphincsplus-sha2-avx2/LICENSE
+  cbits/sphincsplus-sha2-avx2/LICENSES/*
+  cbits/sphincsplus-sha2-avx2/UPSTREAM_COMMIT
+  cbits/sphincsplus-sha2-avx2/Makefile
+  cbits/sphincsplus-sha2-avx2/*.c
+  cbits/sphincsplus-sha2-avx2/*.h
+  cbits/sphincsplus-sha2-avx2/params/*.h
   cbits/falcon-padded-512/common/*.c
   cbits/falcon-padded-512/common/*.h
 
@@ -64,9 +80,10 @@ flag pq-native-backends
   description:
     Build the vendored post-quantum signature sources with their optimised
     backends instead of portable C: mldsa-native's assembly backends
-    (AVX2 on x86_64) and PQClean's AVX2 Falcon (hardware floating point
-    instead of the portable build's integer emulation). Requires a CPU
-    with AVX2, BMI2 and FMA on x86_64. Note that the -m flags apply to
+    (AVX2 on x86_64), PQClean's AVX2 Falcon (hardware floating point
+    instead of the portable build's integer emulation) and the SPHINCS+
+    8-way AVX2 SHA-256 variant. Requires a CPU with AVX2, BMI2 and FMA on
+    x86_64. Note that the -m flags apply to
     every C source of the library.
 
   default: False
@@ -105,6 +122,7 @@ library
     Cardano.Crypto.DSIGN.MLDSA44
     Cardano.Crypto.DSIGN.Mock
     Cardano.Crypto.DSIGN.NeverUsed
+    Cardano.Crypto.DSIGN.SlhDsaBb6
     Cardano.Crypto.DirectSerialise
     Cardano.Crypto.EllipticCurve.BLS12_381
     Cardano.Crypto.EllipticCurve.BLS12_381.Internal
@@ -148,6 +166,8 @@ library
     Cardano.Crypto.MLDSA.Constants
     Cardano.Crypto.PackedBytes
     Cardano.Crypto.PinnedSizedBytes
+    Cardano.Crypto.SLHDSA.C
+    Cardano.Crypto.SLHDSA.Constants
     Cardano.Crypto.Seed
     Cardano.Crypto.Util
     Cardano.Crypto.VRF
@@ -197,6 +217,7 @@ library
     cbits/mldsa-native/mldsa_native.c
     cbits/cardano_falcon512.c
     cbits/falcon-padded-512/common/fips202.c
+    cbits/cardano_slhdsa_bb6.c
 
   include-dirs:
     cbits
@@ -206,11 +227,50 @@ library
   -- mldsa-native (cbits/mldsa-native) is built as a single compilation unit
   -- for ML-DSA-44 only, with the randomized API disabled so that it needs no
   -- RNG. -O3 matches the flags mldsa-native benchmarks itself with.
+  -- SLH-DSA bb-6: the SPHINCS+ reference (portable, ref/) or its 8-way
+  -- AVX2 SHA-256 variant (sha2-avx2/), both with the parameter header
+  -- params/params-cardano-bb6.h selected by PARAMS. sign.c and
+  -- randombytes.c are left out: cbits/cardano_slhdsa_bb6.c provides
+  -- seed-derived key generation and deterministic signing.
+  if flag(pq-native-backends)
+    c-sources:
+      cbits/sphincsplus-sha2-avx2/address.c
+      cbits/sphincsplus-sha2-avx2/fors.c
+      cbits/sphincsplus-sha2-avx2/hash_sha2.c
+      cbits/sphincsplus-sha2-avx2/hash_sha2x8.c
+      cbits/sphincsplus-sha2-avx2/merkle.c
+      cbits/sphincsplus-sha2-avx2/sha2.c
+      cbits/sphincsplus-sha2-avx2/sha256avx.c
+      cbits/sphincsplus-sha2-avx2/sha256x8.c
+      cbits/sphincsplus-sha2-avx2/sha512x4.c
+      cbits/sphincsplus-sha2-avx2/thash_sha2_simple.c
+      cbits/sphincsplus-sha2-avx2/thash_sha2_simplex8.c
+      cbits/sphincsplus-sha2-avx2/utils.c
+      cbits/sphincsplus-sha2-avx2/utilsx8.c
+      cbits/sphincsplus-sha2-avx2/wots.c
+
+    include-dirs: cbits/sphincsplus-sha2-avx2
+  else
+    c-sources:
+      cbits/sphincsplus-ref/address.c
+      cbits/sphincsplus-ref/fors.c
+      cbits/sphincsplus-ref/hash_sha2.c
+      cbits/sphincsplus-ref/merkle.c
+      cbits/sphincsplus-ref/sha2.c
+      cbits/sphincsplus-ref/thash_sha2_simple.c
+      cbits/sphincsplus-ref/utils.c
+      cbits/sphincsplus-ref/utilsx1.c
+      cbits/sphincsplus-ref/wots.c
+      cbits/sphincsplus-ref/wotsx1.c
+
+    include-dirs: cbits/sphincsplus-ref
+
   cc-options:
     -O3
     -DMLD_CONFIG_PARAMETER_SET=44
     -DMLD_CONFIG_NAMESPACE_PREFIX=cardano_mld
     -DMLD_CONFIG_NO_RANDOMIZED_API
+    -DPARAMS=cardano-bb6
 
   -- Falcon-512: PQClean falcon-padded-512, portable (clean) or AVX2 build.
   -- pqclean.c is left out on purpose: it needs PQClean's randombytes, and

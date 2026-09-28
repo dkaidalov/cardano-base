@@ -20,6 +20,7 @@ import Control.Exception (evaluate)
 import Cardano.Crypto.DSIGN.Ed25519
 import Cardano.Crypto.DSIGN.Falcon512
 import Cardano.Crypto.DSIGN.MLDSA44
+import Cardano.Crypto.DSIGN.SlhDsaBb6
 import Cardano.Crypto.Hash.Blake2b
 import Cardano.Crypto.KES.Class
 import Cardano.Crypto.KES.CompactSum
@@ -58,6 +59,9 @@ benchmarks =
     , benchKES @Proxy @(HashedCompactSum6KES Falcon512DSIGN Blake2b_256)
         Proxy
         "HashedCompactSum6KES Falcon512"
+    , benchKES @Proxy @(HashedCompactSum6KES SlhDsaBb6DSIGN Blake2b_256)
+        Proxy
+        "HashedCompactSum6KES SlhDsaBb6"
     ]
 
 -- | Benchmark the four KES operations for one scheme.
