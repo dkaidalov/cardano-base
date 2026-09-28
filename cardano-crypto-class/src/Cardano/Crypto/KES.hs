@@ -7,6 +7,7 @@ where
 import Cardano.Crypto.KES.Class as X
 import Cardano.Crypto.KES.CompactSingle as X
 import Cardano.Crypto.KES.CompactSum as X
+import Cardano.Crypto.KES.HashedSingle as X
 import Cardano.Crypto.KES.Mock as X
 import Cardano.Crypto.KES.NeverUsed as X
 import Cardano.Crypto.KES.Simple as X

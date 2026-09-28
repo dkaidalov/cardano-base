@@ -113,6 +113,7 @@ library
     Cardano.Crypto.KES.Class
     Cardano.Crypto.KES.CompactSingle
     Cardano.Crypto.KES.CompactSum
+    Cardano.Crypto.KES.HashedSingle
     Cardano.Crypto.KES.Mock
     Cardano.Crypto.KES.NeverUsed
     Cardano.Crypto.KES.Simple
