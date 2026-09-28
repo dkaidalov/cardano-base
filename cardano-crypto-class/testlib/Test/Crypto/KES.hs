@@ -89,6 +89,7 @@ tests lock =
     testKESAlloc (Proxy @(SingleKES Ed25519DSIGN)) "SingleKES"
     testKESAlloc (Proxy @(Sum1KES Ed25519DSIGN Blake2b_256)) "Sum1KES"
     testKESAlloc (Proxy @(Sum2KES Ed25519DSIGN Blake2b_256)) "Sum2KES"
+    testKESAlloc (Proxy @(Sum1KES MLDSA44DSIGN Blake2b_256)) "Sum1KES MLDSA44"
     testKESAlgorithm @(MockKES 7) lock "MockKES"
     testKESAlgorithm @(SimpleKES Ed25519DSIGN 7) lock "SimpleKES"
     testKESAlgorithm @(SingleKES Ed25519DSIGN) lock "SingleKES"
@@ -98,6 +99,10 @@ tests lock =
     testKESAlgorithm @(CompactSum1KES Ed25519DSIGN Blake2b_256) lock "CompactSum1KES"
     testKESAlgorithm @(CompactSum2KES Ed25519DSIGN Blake2b_256) lock "CompactSum2KES"
     testKESAlgorithm @(CompactSum5KES Ed25519DSIGN Blake2b_256) lock "CompactSum5KES"
+    testKESAlgorithm @(Sum1KES MLDSA44DSIGN Blake2b_256) lock "Sum1KES MLDSA44"
+    testKESAlgorithm @(Sum2KES MLDSA44DSIGN Blake2b_256) lock "Sum2KES MLDSA44"
+    testKESAlgorithm @(CompactSum1KES MLDSA44DSIGN Blake2b_256) lock "CompactSum1KES MLDSA44"
+    testKESAlgorithm @(CompactSum2KES MLDSA44DSIGN Blake2b_256) lock "CompactSum2KES MLDSA44"
 
 --------------------------------------------------------------------------------
 -- Show and Eq instances

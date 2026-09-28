@@ -1,9 +1,61 @@
-module Bench.Crypto.BenchData where
+module Bench.Crypto.BenchData (
+  testSeed,
+  testBytes,
+  typicalMsg,
+  typicalMsgCount,
+  typicalMsgs,
+  InputCycle (..),
+  newInputCycle,
+) where
 
+import Control.DeepSeq (NFData (..))
+import Data.Bits (shiftR)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import Data.IORef (atomicModifyIORef', newIORef)
+import Data.Word (Word8)
 
 import Cardano.Crypto.Seed
+
+-- | Number of distinct messages the sign and verify benchmarks cycle through.
+--
+-- Schemes with rejection sampling (ML-DSA) have a signing time that depends
+-- on the message: the number of sampling rounds is fixed for a given key and
+-- message, and a single unlucky pair can cost several times the average. A
+-- benchmark that signs one fixed message therefore measures that one input,
+-- not the scheme. Cycling through 1024 messages puts the sampling error of
+-- the mean below 3%.
+typicalMsgCount :: Int
+typicalMsgCount = 1024
+
+-- | 'typicalMsgCount' distinct 32-byte messages: 'typicalMsg' with its first
+-- four bytes replaced by a big-endian counter.
+typicalMsgs :: [ByteString]
+typicalMsgs =
+  [BS.pack (be32 i) <> BS.drop 4 typicalMsg | i <- [0 .. typicalMsgCount - 1]]
+  where
+    be32 :: Int -> [Word8]
+    be32 i = [fromIntegral (i `shiftR` s) | s <- [24, 16, 8, 0]]
+
+-- | An action that yields the next input from a fixed cycle, for use with
+-- Criterion's 'Criterion.perRunEnv': every run of the benchmark then sees a
+-- different input, and the cost of choosing it stays outside the timed
+-- region. The wrapper only exists so the action can be part of a Criterion
+-- 'Criterion.env'.
+newtype InputCycle a = InputCycle {nextInput :: IO a}
+
+instance NFData (InputCycle a) where
+  rnf (InputCycle _) = ()
+
+newInputCycle :: [a] -> IO (InputCycle a)
+newInputCycle [] = fail "newInputCycle: empty input list"
+newInputCycle xs = do
+  ref <- newIORef (cycle xs)
+  return $
+    InputCycle $
+      atomicModifyIORef' ref $ \ys -> case ys of
+        (y : ys') -> (ys', y)
+        [] -> error "newInputCycle: cycle of a non-empty list is infinite"
 
 testSeed :: Seed
 testSeed = mkSeedFromBytes testBytes

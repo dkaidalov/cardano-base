@@ -118,7 +118,7 @@ import System.IO.Unsafe (unsafeDupablePerformIO)
 newtype MessageHash = MH (PinnedSizedBytes SECP256K1_ECDSA_MESSAGE_BYTES)
   deriving (Eq) via (PinnedSizedBytes SECP256K1_ECDSA_MESSAGE_BYTES)
   deriving stock (Show)
-  deriving newtype (ToCBOR, FromCBOR)
+  deriving newtype (ToCBOR, FromCBOR, NFData)
 
 instance FixedSizeCodec MessageHash where
   type FixedSize MessageHash = SECP256K1_ECDSA_MESSAGE_BYTES

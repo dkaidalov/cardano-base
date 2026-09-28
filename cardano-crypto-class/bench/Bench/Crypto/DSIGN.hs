@@ -17,9 +17,11 @@ import Data.ByteString (ByteString)
 import qualified Data.Foldable as F
 
 import Control.DeepSeq
+import Control.Exception (evaluate)
 
 import Cardano.Crypto.DSIGN.Class
 import Cardano.Crypto.DSIGN.Ed25519
+import Cardano.Crypto.DSIGN.MLDSA44
 #ifdef SECP256K1_ENABLED
 import Cardano.Crypto.DSIGN.EcdsaSecp256k1
 import Cardano.Crypto.DSIGN.SchnorrSecp256k1
@@ -34,6 +36,7 @@ import Cardano.Crypto.DSIGN.BLS12381.Internal (BLS12381MinSigDSIGN, BLS12381MinV
 benchmarks :: Benchmark
 benchmarks = bgroup "DSIGN"
   [ benchDSIGN (Proxy :: Proxy Ed25519DSIGN) "Ed25519"
+  , benchDSIGN (Proxy :: Proxy MLDSA44DSIGN) "MLDSA44"
   , benchDSIGN (Proxy :: Proxy BLS12381MinVerKeyDSIGN) "BLS12381MinVerKey"
   , benchDSIGN (Proxy :: Proxy BLS12381MinSigDSIGN) "BLS12381MinSig"
   , benchAggDSIGN (Proxy :: Proxy BLS12381MinVerKeyDSIGN) "BLS12381MinVerKey"
@@ -44,11 +47,19 @@ benchmarks = bgroup "DSIGN"
 #endif
   ]
 
+-- | Benchmark key generation, signing and verification for one scheme.
+--
+-- Signing and verification cycle through 'typicalMsgs' with 'perRunEnv', so
+-- that each run signs (or verifies) a different message. For schemes with
+-- rejection sampling the signing time depends on the message, and timing a
+-- single fixed one would report the cost of that input rather than of the
+-- scheme; see 'typicalMsgCount'.
 benchDSIGN :: forall v a
            . ( DSIGNAlgorithm v
              , Signable v a
              , ExampleSignable v a
              , ExampleContext v
+             , NFData a
              , NFData (SignKeyDSIGN v)
              , NFData (VerKeyDSIGN v)
              , NFData (SigDSIGN v)
@@ -57,44 +68,62 @@ benchDSIGN :: forall v a
           -> String
           -> Benchmark
 benchDSIGN _ lbl =
-  let msg = exampleSignable (Proxy @v)
+  let msgs = exampleSignables (Proxy @v)
       ctx = exampleContext (Proxy @v)
   in
   bgroup lbl
     [ bench "genKeyDSIGN" $
         nf (genKeyDSIGN @v) testSeed
 
-    , env (return (genKeyDSIGN @v testSeed)) $ \signKey ->
+    , env (do let signKey = genKeyDSIGN @v testSeed
+              nextMsg <- newInputCycle msgs
+              return (signKey, nextMsg)
+          ) $ \ ~(signKey, nextMsg) ->
       bench "signDSIGN" $
-        nf (signDSIGN @v ctx msg) signKey
+        perRunEnv (nextInput nextMsg) $ \msg ->
+          return $! signDSIGN @v ctx msg signKey
 
-    , env (let signKey = genKeyDSIGN @v testSeed
-               verKey  = deriveVerKeyDSIGN signKey
-               sig     = signDSIGN @v ctx msg signKey
-            in return (verKey, sig)
-          ) $ \ ~(verKey, sig) ->
+    , env (do let signKey = genKeyDSIGN @v testSeed
+                  verKey  = deriveVerKeyDSIGN signKey
+              pairs <- evaluate $ force [ (msg, signDSIGN @v ctx msg signKey) | msg <- msgs ]
+              nextPair <- newInputCycle pairs
+              return (verKey, nextPair)
+          ) $ \ ~(verKey, nextPair) ->
       bench "verifyDSIGN" $
-        nf (verifyDSIGN @v ctx verKey msg) sig
+        perRunEnv (nextInput nextPair) $ \ ~(msg, sig) ->
+          return $! verifyDSIGN @v ctx verKey msg sig
     ]
 
 -- | A helper class to gloss over the differences in the 'Signable' constraint
 -- for different 'DSIGNAlgorithm' instances. Some use 'ByteString', some use
 -- 'MessageHash'.
 class ExampleSignable v a | v -> a where
-  exampleSignable :: Signable v a => Proxy v -> a
+  -- | Turn one of the benchmark messages into the scheme's signable input.
+  exampleSignableFrom :: Signable v a => Proxy v -> ByteString -> a
+
+-- | The single input used where a benchmark needs only one message.
+exampleSignable :: (ExampleSignable v a, Signable v a) => Proxy v -> a
+exampleSignable p = exampleSignableFrom p typicalMsg
+
+-- | The inputs the sign and verify benchmarks cycle through.
+exampleSignables :: (ExampleSignable v a, Signable v a) => Proxy v -> [a]
+exampleSignables p = map (exampleSignableFrom p) typicalMsgs
 
 instance ExampleSignable Ed25519DSIGN ByteString where
-  exampleSignable _ = typicalMsg
+  exampleSignableFrom _ = id
+
+instance ExampleSignable MLDSA44DSIGN ByteString where
+  exampleSignableFrom _ = id
 
 instance ExampleSignable (BLS12381DSIGN curve) ByteString where
-  exampleSignable _ = typicalMsg
+  exampleSignableFrom _ = id
 
 #ifdef SECP256K1_ENABLED
 instance ExampleSignable EcdsaSecp256k1DSIGN MessageHash where
-  exampleSignable _ = hashAndPack (Proxy @Blake2b_256) typicalMsg
+  exampleSignableFrom _ = hashAndPack (Proxy @Blake2b_256)
 
 instance ExampleSignable SchnorrSecp256k1DSIGN ByteString where
-  exampleSignable _ = typicalMsg
+  exampleSignableFrom _ = id
 #endif
 
 -- | Provide an example context for each DSIGN algorithm.
@@ -104,6 +133,9 @@ class ExampleContext v where
   exampleContext :: Proxy v -> ContextDSIGN v
 
 instance ExampleContext Ed25519DSIGN where
+  exampleContext _ = ()
+
+instance ExampleContext MLDSA44DSIGN where
   exampleContext _ = ()
 
 #ifdef SECP256K1_ENABLED

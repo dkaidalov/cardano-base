@@ -2,6 +2,11 @@
 
 ## 2.6.0.0
 
+* Add `MLDSA44DSIGN`, an ML-DSA-44 (FIPS 204) `DSIGNAlgorithm` and
+  `DSIGNMAlgorithm` instance over vendored mldsa-native sources
+  (`cbits/mldsa-native`, pinned in `cbits/mldsa-native/UPSTREAM_COMMIT`).
+  Signing is deterministic with an empty context string; only the 32-byte
+  seed is serialised. Composes with `SumKES` and `CompactSumKES`.
 * Replace memory dependency with ram (drop in replacement)
 * Depend on crypton ^>- 1.1
 * Fix the DST used when hashing the public key for BLS12-381 proofs of possession:

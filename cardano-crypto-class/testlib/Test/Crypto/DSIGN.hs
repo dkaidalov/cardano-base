@@ -53,6 +53,7 @@ import Cardano.Crypto.DSIGN (
   MockDSIGN,
   Ed25519DSIGN,
   Ed448DSIGN,
+  MLDSA44DSIGN,
   aggregateVerKeysDSIGN,
   seedSizeDSIGN,
 
@@ -187,6 +188,7 @@ tests lock =
        testDSIGNAlgorithm (Proxy @MockDSIGN) (arbitrary @Message) "MockDSIGN"
        testDSIGNAlgorithm (Proxy @Ed25519DSIGN) (arbitrary @Message) "Ed25519DSIGN"
        testDSIGNAlgorithm (Proxy @Ed448DSIGN) (arbitrary @Message) "Ed448DSIGN"
+       testDSIGNAlgorithm (Proxy @MLDSA44DSIGN) (arbitrary @Message) "MLDSA44DSIGN"
        testDSIGNAlgorithmWithContext (Proxy @BLS12381MinVerKeyDSIGN) True (pure ()) blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinVerKeyDSIGN"
        testDSIGNAlgorithmWithContext (Proxy @BLS12381MinSigDSIGN) True (pure ()) blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinSigDSIGN"
 #ifdef SECP256K1_ENABLED
@@ -201,6 +203,8 @@ tests lock =
 #endif
      describe "MLocked" $ do
       testDSIGNMAlgorithm lock (Proxy @Ed25519DSIGN) "Ed25519DSIGN"
+      -- 3904-byte in-memory sign key, see 'testDSIGNMAlgorithmWith'.
+      testDSIGNMAlgorithmWith False lock (Proxy @MLDSA44DSIGN) "MLDSA44DSIGN"
      describe "Aggregatable" $ do
       testDSIGNAggregatableWithContext (Proxy @(BLS12381DSIGN Curve1)) (pure ()) blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinVerKeyDSIGN"
       testDSIGNAggregatableWithContext (Proxy @(BLS12381DSIGN Curve2)) (pure ()) blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinSigDSIGN"
@@ -432,7 +436,35 @@ testDSIGNMAlgorithm
   -> Proxy v
   -> String
   -> Spec
-testDSIGNMAlgorithm lock _ n =
+testDSIGNMAlgorithm = testDSIGNMAlgorithmWith True
+
+-- | As 'testDSIGNMAlgorithm'. The first argument controls whether the
+-- "key overwritten after forget" property runs. That property reads the
+-- sign key's mlocked buffer after 'forgetSignKeyDSIGNM' and expects zeroes,
+-- which is only observable for keys served from the mlocked pools (at most
+-- 512 bytes). Larger keys are allocated with @sodium_malloc@ and unmapped on
+-- free, so the read is a use-after-free that segfaults instead. Pass 'False'
+-- for schemes with sign keys larger than 512 bytes.
+testDSIGNMAlgorithmWith
+  :: forall v. ( UnsoundDSIGNMAlgorithm v
+               , ToCBOR (VerKeyDSIGN v)
+               , FromCBOR (VerKeyDSIGN v)
+               , EqST (SignKeyDSIGNM v)
+               , ToCBOR (SigDSIGN v)
+               , FromCBOR (SigDSIGN v)
+               , ContextDSIGN v ~ ()
+               , Signable v Message
+               , DirectSerialise (SignKeyDSIGNM v)
+               , DirectDeserialise (SignKeyDSIGNM v)
+               , DirectSerialise (VerKeyDSIGN v)
+               , DirectDeserialise (VerKeyDSIGN v)
+               )
+  => Bool
+  -> Lock
+  -> Proxy v
+  -> String
+  -> Spec
+testDSIGNMAlgorithmWith testForgetting lock _ n =
   describe n $ do
      describe "serialisation" $ do
        describe "raw" $ do
@@ -549,8 +581,9 @@ testDSIGNMAlgorithm lock _ n =
      describe "seed extraction" $ do
        prop "extracted seed equals original seed" $ prop_dsignm_seed_roundtrip (Proxy @v)
 
-     describe "forgetting" $ do
-       prop "key overwritten after forget" $ prop_key_overwritten_after_forget (Proxy @v)
+     when testForgetting $
+       describe "forgetting" $ do
+         prop "key overwritten after forget" $ prop_key_overwritten_after_forget (Proxy @v)
 
      describe "NoThunks" $ do
        prop "VerKey" $
