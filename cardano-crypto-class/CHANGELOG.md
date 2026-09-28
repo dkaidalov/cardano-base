@@ -7,6 +7,11 @@
   (`cbits/mldsa-native`, pinned in `cbits/mldsa-native/UPSTREAM_COMMIT`).
   Signing is deterministic with an empty context string; only the 32-byte
   seed is serialised. Composes with `SumKES` and `CompactSumKES`.
+* Add `HashedSingleKES`, a single-period KES whose verification key is the
+  hash of the DSIGN verification key, with `HashedCompactSum{0..7}KES`
+  aliases for compact sums over it. For a DSIGN scheme with a large key this
+  shrinks the compact sum signature by `|vk| - |hash|`: 5204 to 3924 bytes for
+  ML-DSA-44 with Blake2b-256.
 * Fix a segfault at program exit in the mlocked memory pools: a block's
   erase finalizer could run after its page had already been unmapped by
   `sodium_free`, since GHC orders finalizers arbitrarily when a page and its

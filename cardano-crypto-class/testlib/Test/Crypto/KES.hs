@@ -49,7 +49,7 @@ import Cardano.Crypto.PinnedSizedBytes
 import Cardano.Crypto.Seed (mkSeedFromBytes)
 import Cardano.Crypto.Util (SignableRepresentation (..))
 
-import Test.Hspec (Expectation, Spec, describe, it, shouldSatisfy)
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe, shouldSatisfy)
 import Test.Hspec.QuickCheck (modifyMaxSuccess, prop)
 import Test.QuickCheck
 
@@ -90,6 +90,7 @@ tests lock =
     testKESAlloc (Proxy @(Sum1KES Ed25519DSIGN Blake2b_256)) "Sum1KES"
     testKESAlloc (Proxy @(Sum2KES Ed25519DSIGN Blake2b_256)) "Sum2KES"
     testKESAlloc (Proxy @(Sum1KES MLDSA44DSIGN Blake2b_256)) "Sum1KES MLDSA44"
+    testKESAlloc (Proxy @(HashedCompactSum1KES MLDSA44DSIGN Blake2b_256)) "HashedCompactSum1KES MLDSA44"
     testKESAlgorithm @(MockKES 7) lock "MockKES"
     testKESAlgorithm @(SimpleKES Ed25519DSIGN 7) lock "SimpleKES"
     testKESAlgorithm @(SingleKES Ed25519DSIGN) lock "SingleKES"
@@ -103,6 +104,36 @@ tests lock =
     testKESAlgorithm @(Sum2KES MLDSA44DSIGN Blake2b_256) lock "Sum2KES MLDSA44"
     testKESAlgorithm @(CompactSum1KES MLDSA44DSIGN Blake2b_256) lock "CompactSum1KES MLDSA44"
     testKESAlgorithm @(CompactSum2KES MLDSA44DSIGN Blake2b_256) lock "CompactSum2KES MLDSA44"
+    testKESAlgorithm @(HashedCompactSum1KES Ed25519DSIGN Blake2b_256) lock "HashedCompactSum1KES"
+    testKESAlgorithm @(HashedCompactSum2KES Ed25519DSIGN Blake2b_256) lock "HashedCompactSum2KES"
+    testKESAlgorithm @(HashedCompactSum1KES MLDSA44DSIGN Blake2b_256)
+      lock
+      "HashedCompactSum1KES MLDSA44"
+    testKESAlgorithm @(HashedCompactSum2KES MLDSA44DSIGN Blake2b_256)
+      lock
+      "HashedCompactSum2KES MLDSA44"
+    testSigSizes
+
+-- | Signature sizes of the 64-period sums, in bytes. Only the innermost level
+-- of a sum carries full DSIGN verification keys; the levels above carry
+-- 32-byte hashes. The hashed leaf replaces the innermost sibling key by its
+-- hash too, which changes nothing for Ed25519 (32-byte keys) and saves
+-- 1312 - 32 bytes for ML-DSA-44: 5204 down to 3924.
+testSigSizes :: Spec
+testSigSizes =
+  describe "signature sizes (bytes)" $ do
+    it "Sum6KES Ed25519 = 448" $
+      fixedSize (Proxy @(SigKES (Sum6KES Ed25519DSIGN Blake2b_256))) `shouldBe` 448
+    it "CompactSum6KES Ed25519 = 288" $
+      fixedSize (Proxy @(SigKES (CompactSum6KES Ed25519DSIGN Blake2b_256))) `shouldBe` 288
+    it "HashedCompactSum6KES Ed25519 = 288" $
+      fixedSize (Proxy @(SigKES (HashedCompactSum6KES Ed25519DSIGN Blake2b_256))) `shouldBe` 288
+    it "Sum6KES MLDSA44 = 5364" $
+      fixedSize (Proxy @(SigKES (Sum6KES MLDSA44DSIGN Blake2b_256))) `shouldBe` 5364
+    it "CompactSum6KES MLDSA44 = 5204" $
+      fixedSize (Proxy @(SigKES (CompactSum6KES MLDSA44DSIGN Blake2b_256))) `shouldBe` 5204
+    it "HashedCompactSum6KES MLDSA44 = 3924" $
+      fixedSize (Proxy @(SigKES (HashedCompactSum6KES MLDSA44DSIGN Blake2b_256))) `shouldBe` 3924
 
 --------------------------------------------------------------------------------
 -- Show and Eq instances
@@ -133,6 +164,8 @@ instance Show (SignKeyKES (CompactSumKES h d)) where
 deriving via (PureEqST (SignKeyKES (MockKES t))) instance EqST (SignKeyKES (MockKES t))
 
 deriving newtype instance EqST (SignKeyDSIGNM d) => EqST (SignKeyKES (SingleKES d))
+
+deriving newtype instance EqST (SignKeyDSIGNM d) => EqST (SignKeyKES (HashedSingleKES h d))
 
 instance
   ( EqST (SignKeyKES d)

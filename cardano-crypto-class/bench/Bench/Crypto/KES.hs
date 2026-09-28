@@ -22,6 +22,7 @@ import Cardano.Crypto.DSIGN.MLDSA44
 import Cardano.Crypto.Hash.Blake2b
 import Cardano.Crypto.KES.Class
 import Cardano.Crypto.KES.CompactSum
+import Cardano.Crypto.KES.HashedSingle
 import Cardano.Crypto.KES.Sum
 
 import Cardano.Crypto.Libsodium as NaCl
@@ -50,6 +51,9 @@ benchmarks =
     , benchKES @Proxy @(CompactSum7KES Ed25519DSIGN Blake2b_256) Proxy "CompactSum7KES"
     , benchKES @Proxy @(Sum6KES MLDSA44DSIGN Blake2b_256) Proxy "Sum6KES MLDSA44"
     , benchKES @Proxy @(CompactSum6KES MLDSA44DSIGN Blake2b_256) Proxy "CompactSum6KES MLDSA44"
+    , benchKES @Proxy @(HashedCompactSum6KES MLDSA44DSIGN Blake2b_256)
+        Proxy
+        "HashedCompactSum6KES MLDSA44"
     ]
 
 -- | Benchmark the four KES operations for one scheme.
