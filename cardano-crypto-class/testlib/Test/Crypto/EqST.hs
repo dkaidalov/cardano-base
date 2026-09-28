@@ -12,9 +12,11 @@ import GHC.TypeLits (KnownNat)
 
 import Cardano.Crypto.DSIGN.Class
 import Cardano.Crypto.DSIGN.Ed25519
+import Cardano.Crypto.DSIGN.MLDSA44
 import Cardano.Crypto.KES.Simple
 import Cardano.Crypto.Libsodium.MLockedBytes.Internal
 import Cardano.Crypto.Libsodium.MLockedSeed
+import Cardano.Crypto.MLDSA.Constants (MLDSA44_SIGNKEYBYTES)
 
 -- | Monadic flavor of 'Eq', for things that can only be compared in a monadic
 -- context that satisfies 'MonadST'.
@@ -82,6 +84,13 @@ deriving via
   (MLockedSizedBytes (SignKeySizeDSIGN Ed25519DSIGN))
   instance
     EqST (SignKeyDSIGNM Ed25519DSIGN)
+
+-- The in-memory ML-DSA-44 sign key is seed || sk || pk, larger than its
+-- serialised (seed only) size, hence the explicit constant.
+deriving via
+  (MLockedSizedBytes MLDSA44_SIGNKEYBYTES)
+  instance
+    EqST (SignKeyDSIGNM MLDSA44DSIGN)
 
 instance EqST (SignKeyDSIGNM d) => EqST (SignKeyKES (SimpleKES d t)) where
   equalsM (ThunkySignKeySimpleKES a) (ThunkySignKeySimpleKES b) =

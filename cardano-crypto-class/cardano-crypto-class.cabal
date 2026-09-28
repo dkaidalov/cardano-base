@@ -23,6 +23,18 @@ extra-doc-files:
 
 extra-source-files:
   cbits/blst_util.h
+  cbits/cardano_mldsa44.h
+  cbits/mldsa-native/LICENSE
+  cbits/mldsa-native/README.md
+  cbits/mldsa-native/UPSTREAM_COMMIT
+  cbits/mldsa-native/*.S
+  cbits/mldsa-native/*.c
+  cbits/mldsa-native/*.h
+  cbits/mldsa-native/src/**/*.S
+  cbits/mldsa-native/src/**/*.c
+  cbits/mldsa-native/src/**/*.h
+  cbits/mldsa-native/src/**/*.inc
+  cbits/mldsa-native/src/**/*.md
 
 data-files:
   bls12-381-test-vectors/test_vectors/bls_sig_aug_test_vectors
@@ -37,6 +49,17 @@ flag secp256k1-support
     a recent libsecp256k1 with support for Schnorr signatures.
 
   default: True
+  manual: True
+
+flag mldsa-native-backend
+  description:
+    Build the vendored mldsa-native sources (ML-DSA-44) with their
+    optimised assembly backends instead of the portable C implementation.
+    On x86_64 this selects the AVX2 backend and requires a CPU with AVX2
+    and BMI2; on other architectures mldsa-native picks its default
+    backend for the target, if any.
+
+  default: False
   manual: True
 
 common base
@@ -68,6 +91,7 @@ library
     Cardano.Crypto.DSIGN.Class
     Cardano.Crypto.DSIGN.Ed25519
     Cardano.Crypto.DSIGN.Ed448
+    Cardano.Crypto.DSIGN.MLDSA44
     Cardano.Crypto.DSIGN.Mock
     Cardano.Crypto.DSIGN.NeverUsed
     Cardano.Crypto.DirectSerialise
@@ -106,6 +130,8 @@ library
     Cardano.Crypto.Libsodium.Memory
     Cardano.Crypto.Libsodium.Memory.Internal
     Cardano.Crypto.Libsodium.UnsafeC
+    Cardano.Crypto.MLDSA.C
+    Cardano.Crypto.MLDSA.Constants
     Cardano.Crypto.PackedBytes
     Cardano.Crypto.PinnedSizedBytes
     Cardano.Crypto.Seed
@@ -151,8 +177,41 @@ library
     libblst >=0.3.14,
     libsodium,
 
-  c-sources: cbits/blst_util.c
-  include-dirs: cbits
+  c-sources:
+    cbits/blst_util.c
+    cbits/cardano_mldsa44.c
+    cbits/mldsa-native/mldsa_native.c
+
+  include-dirs:
+    cbits
+    cbits/mldsa-native
+
+  -- mldsa-native (cbits/mldsa-native) is built as a single compilation unit
+  -- for ML-DSA-44 only, with the randomized API disabled so that it needs no
+  -- RNG. -O3 matches the flags mldsa-native benchmarks itself with.
+  cc-options:
+    -O3
+    -DMLD_CONFIG_PARAMETER_SET=44
+    -DMLD_CONFIG_NAMESPACE_PREFIX=cardano_mld
+    -DMLD_CONFIG_NO_RANDOMIZED_API
+
+  if flag(mldsa-native-backend)
+    cc-options:
+      -DMLD_CONFIG_USE_NATIVE_BACKEND_ARITH
+      -DMLD_CONFIG_USE_NATIVE_BACKEND_FIPS202
+
+    asm-sources: cbits/mldsa-native/mldsa_native_asm.S
+    asm-options:
+      -Icbits/mldsa-native
+      -DMLD_CONFIG_PARAMETER_SET=44
+      -DMLD_CONFIG_NAMESPACE_PREFIX=cardano_mld
+      -DMLD_CONFIG_NO_RANDOMIZED_API
+      -DMLD_CONFIG_USE_NATIVE_BACKEND_ARITH
+      -DMLD_CONFIG_USE_NATIVE_BACKEND_FIPS202
+
+    if arch(x86_64)
+      cc-options: -mavx2 -mbmi2
+      asm-options: -mavx2 -mbmi2
 
   if flag(secp256k1-support)
     exposed-modules:
@@ -225,6 +284,7 @@ library benchlib
     base,
     bytestring,
     cardano-crypto-class,
+    deepseq,
 
 test-suite tests
   import: base, project-config

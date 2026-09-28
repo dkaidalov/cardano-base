@@ -1,5 +1,13 @@
 # Changelog for `cardano-crypto-class`
 
+## Unreleased (pq-kes branch)
+
+* Add `MLDSA44DSIGN`, an ML-DSA-44 (FIPS 204) `DSIGNAlgorithm` and
+  `DSIGNMAlgorithm` instance over vendored mldsa-native sources
+  (`cbits/mldsa-native`, pinned in `cbits/mldsa-native/UPSTREAM_COMMIT`).
+  Signing is deterministic with an empty context string; only the 32-byte
+  seed is serialised. Composes with `SumKES` and `CompactSumKES`.
+
 ## 2.5.1.0
 
 * Add `VerKeySizeVRF`, `SignKeySizeVRF` and `CertSizeVRF` type-level sizes to `VRFAlgorithm`
