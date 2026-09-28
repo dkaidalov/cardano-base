@@ -1,0 +1,1 @@
+sphincs/sphincsplus 7ec789ace6874d875f4bb84cb61b81155398167e (2024-04-15), ref/ without test/ and PQCgenKAT_sign.c; params/params-cardano-bb6.h added locally; hash_sha2.c: SPX_D == 1 branch of hash_message guarded with #if (dead-code shift warning)

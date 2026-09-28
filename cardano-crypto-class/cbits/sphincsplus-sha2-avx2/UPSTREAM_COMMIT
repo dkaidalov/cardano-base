@@ -1,0 +1,1 @@
+sphincs/sphincsplus 7ec789ace6874d875f4bb84cb61b81155398167e (2024-04-15), sha2-avx2/ with symlinks to ref/ dereferenced, without test/ and PQCgenKAT_sign.c; params/params-cardano-bb6.h added locally; hash_sha2.c carries the same SPX_D == 1 guard as ../sphincsplus-ref
