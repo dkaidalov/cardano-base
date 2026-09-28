@@ -35,6 +35,15 @@ extra-source-files:
   cbits/mldsa-native/src/**/*.h
   cbits/mldsa-native/src/**/*.inc
   cbits/mldsa-native/src/**/*.md
+  cbits/cardano_falcon512.h
+  cbits/falcon-padded-512/LICENSE
+  cbits/falcon-padded-512/UPSTREAM_COMMIT
+  cbits/falcon-padded-512/clean/*.c
+  cbits/falcon-padded-512/clean/*.h
+  cbits/falcon-padded-512/avx2/*.c
+  cbits/falcon-padded-512/avx2/*.h
+  cbits/falcon-padded-512/common/*.c
+  cbits/falcon-padded-512/common/*.h
 
 data-files:
   bls12-381-test-vectors/test_vectors/bls_sig_aug_test_vectors
@@ -51,13 +60,14 @@ flag secp256k1-support
   default: True
   manual: True
 
-flag mldsa-native-backend
+flag pq-native-backends
   description:
-    Build the vendored mldsa-native sources (ML-DSA-44) with their
-    optimised assembly backends instead of the portable C implementation.
-    On x86_64 this selects the AVX2 backend and requires a CPU with AVX2
-    and BMI2; on other architectures mldsa-native picks its default
-    backend for the target, if any.
+    Build the vendored post-quantum signature sources with their optimised
+    backends instead of portable C: mldsa-native's assembly backends
+    (AVX2 on x86_64) and PQClean's AVX2 Falcon (hardware floating point
+    instead of the portable build's integer emulation). Requires a CPU
+    with AVX2, BMI2 and FMA on x86_64. Note that the -m flags apply to
+    every C source of the library.
 
   default: False
   manual: True
@@ -91,12 +101,15 @@ library
     Cardano.Crypto.DSIGN.Class
     Cardano.Crypto.DSIGN.Ed25519
     Cardano.Crypto.DSIGN.Ed448
+    Cardano.Crypto.DSIGN.Falcon512
     Cardano.Crypto.DSIGN.MLDSA44
     Cardano.Crypto.DSIGN.Mock
     Cardano.Crypto.DSIGN.NeverUsed
     Cardano.Crypto.DirectSerialise
     Cardano.Crypto.EllipticCurve.BLS12_381
     Cardano.Crypto.EllipticCurve.BLS12_381.Internal
+    Cardano.Crypto.Falcon.C
+    Cardano.Crypto.Falcon.Constants
     Cardano.Crypto.Hash
     Cardano.Crypto.Hash.Blake2b
     Cardano.Crypto.Hash.Class
@@ -182,10 +195,13 @@ library
     cbits/blst_util.c
     cbits/cardano_mldsa44.c
     cbits/mldsa-native/mldsa_native.c
+    cbits/cardano_falcon512.c
+    cbits/falcon-padded-512/common/fips202.c
 
   include-dirs:
     cbits
     cbits/mldsa-native
+    cbits/falcon-padded-512/common
 
   -- mldsa-native (cbits/mldsa-native) is built as a single compilation unit
   -- for ML-DSA-44 only, with the randomized API disabled so that it needs no
@@ -196,7 +212,36 @@ library
     -DMLD_CONFIG_NAMESPACE_PREFIX=cardano_mld
     -DMLD_CONFIG_NO_RANDOMIZED_API
 
-  if flag(mldsa-native-backend)
+  -- Falcon-512: PQClean falcon-padded-512, portable (clean) or AVX2 build.
+  -- pqclean.c is left out on purpose: it needs PQClean's randombytes, and
+  -- cbits/cardano_falcon512.c provides seed-derived replacements.
+  if flag(pq-native-backends)
+    c-sources:
+      cbits/falcon-padded-512/avx2/codec.c
+      cbits/falcon-padded-512/avx2/common.c
+      cbits/falcon-padded-512/avx2/fft.c
+      cbits/falcon-padded-512/avx2/fpr.c
+      cbits/falcon-padded-512/avx2/keygen.c
+      cbits/falcon-padded-512/avx2/rng.c
+      cbits/falcon-padded-512/avx2/sign.c
+      cbits/falcon-padded-512/avx2/vrfy.c
+
+    include-dirs: cbits/falcon-padded-512/avx2
+    cc-options: -DCARDANO_FALCON512_AVX2
+  else
+    c-sources:
+      cbits/falcon-padded-512/clean/codec.c
+      cbits/falcon-padded-512/clean/common.c
+      cbits/falcon-padded-512/clean/fft.c
+      cbits/falcon-padded-512/clean/fpr.c
+      cbits/falcon-padded-512/clean/keygen.c
+      cbits/falcon-padded-512/clean/rng.c
+      cbits/falcon-padded-512/clean/sign.c
+      cbits/falcon-padded-512/clean/vrfy.c
+
+    include-dirs: cbits/falcon-padded-512/clean
+
+  if flag(pq-native-backends)
     cc-options:
       -DMLD_CONFIG_USE_NATIVE_BACKEND_ARITH
       -DMLD_CONFIG_USE_NATIVE_BACKEND_FIPS202
@@ -211,7 +256,7 @@ library
       -DMLD_CONFIG_USE_NATIVE_BACKEND_FIPS202
 
     if arch(x86_64)
-      cc-options: -mavx2 -mbmi2
+      cc-options: -mavx2 -mbmi2 -mfma
       asm-options: -mavx2 -mbmi2
 
   if flag(secp256k1-support)
