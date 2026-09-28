@@ -26,6 +26,16 @@
   (`cbits/sphincsplus-ref`, or `cbits/sphincsplus-sha2-avx2` with
   `pq-native-backends`). Deterministic signing, seed-derived key generation.
   `HashedCompactSum6KES SlhDsaBb6DSIGN Blake2b_256` signatures are 3584 bytes.
+* Add `XmssMockDSIGN`, a BENCHMARK-ONLY stateful leaf: XMSS-SHA2_10_192
+  (RFC 8391) over the vendored XMSS reference implementation
+  (`cbits/xmss-reference`, BDS traversal), with the one-time index and
+  traversal state kept inside the mlocked sign key and advanced by
+  `signDSIGNM`; the pure `signDSIGN` signs on a copy and reuses the current
+  one-time key. It exists to measure what a stateful leaf costs in the KES
+  compositions and must not be used for anything else.
+  `HashedCompactSum6KES XmssMockDSIGN Blake2b_256` signatures are 1732 bytes.
+* `Bench.Crypto.KES.benchKESWith` cycles the signKES row over several keys,
+  for leaves with a bounded number of signatures per key.
 * Fix a segfault at program exit in the mlocked memory pools: a block's
   erase finalizer could run after its page had already been unmapped by
   `sodium_free`, since GHC orders finalizers arbitrarily when a page and its

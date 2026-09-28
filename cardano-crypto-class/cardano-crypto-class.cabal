@@ -58,6 +58,14 @@ extra-source-files:
   cbits/sphincsplus-sha2-avx2/*.c
   cbits/sphincsplus-sha2-avx2/*.h
   cbits/sphincsplus-sha2-avx2/params/*.h
+  cbits/cardano_xmss_mock.h
+  cbits/xmss-compat/openssl/sha.h
+  cbits/xmss-reference/LICENSE
+  cbits/xmss-reference/README.md
+  cbits/xmss-reference/UPSTREAM_COMMIT
+  cbits/xmss-reference/Makefile
+  cbits/xmss-reference/*.c
+  cbits/xmss-reference/*.h
   cbits/falcon-padded-512/common/*.c
   cbits/falcon-padded-512/common/*.h
 
@@ -85,6 +93,15 @@ flag pq-native-backends
     8-way AVX2 SHA-256 variant. Requires a CPU with AVX2, BMI2 and FMA on
     x86_64. Note that the -m flags apply to
     every C source of the library.
+
+  default: False
+  manual: True
+
+flag stateful-mock-tests
+  description:
+    Run the test groups of the benchmark-only stateful leaf XmssMockDSIGN.
+    Off by default: every case generates a 2^10-leaf XMSS tree (about a
+    second), and the groups take about a quarter of an hour.
 
   default: False
   manual: True
@@ -123,6 +140,7 @@ library
     Cardano.Crypto.DSIGN.Mock
     Cardano.Crypto.DSIGN.NeverUsed
     Cardano.Crypto.DSIGN.SlhDsaBb6
+    Cardano.Crypto.DSIGN.XmssMock
     Cardano.Crypto.DirectSerialise
     Cardano.Crypto.EllipticCurve.BLS12_381
     Cardano.Crypto.EllipticCurve.BLS12_381.Internal
@@ -175,6 +193,8 @@ library
     Cardano.Crypto.VRF.Mock
     Cardano.Crypto.VRF.NeverUsed
     Cardano.Crypto.VRF.Simple
+    Cardano.Crypto.XMSS.C
+    Cardano.Crypto.XMSS.Constants
     Cardano.Foreign
 
   other-modules:
@@ -218,11 +238,25 @@ library
     cbits/cardano_falcon512.c
     cbits/falcon-padded-512/common/fips202.c
     cbits/cardano_slhdsa_bb6.c
+    cbits/cardano_xmss_mock.c
+    cbits/xmss-reference/hash.c
+    cbits/xmss-reference/hash_address.c
+    cbits/xmss-reference/params.c
+    cbits/xmss-reference/utils.c
+    cbits/xmss-reference/wots.c
+    cbits/xmss-reference/xmss_commons.c
+    cbits/xmss-reference/xmss_core_fast.c
 
+  -- cbits/xmss-compat supplies <openssl/sha.h> over libsodium for
+  -- xmss-reference/hash.c; its SHAKE calls resolve to
+  -- falcon-padded-512/common/fips202.c, so xmss-reference/fips202.c is not
+  -- compiled, and randombytes() comes from cbits/cardano_xmss_mock.c.
   include-dirs:
     cbits
     cbits/mldsa-native
     cbits/falcon-padded-512/common
+    cbits/xmss-compat
+    cbits/xmss-reference
 
   -- mldsa-native (cbits/mldsa-native) is built as a single compilation unit
   -- for ML-DSA-44 only, with the randomized API disabled so that it needs no
@@ -374,6 +408,9 @@ library testlib
     reflection,
     vector,
 
+  if flag(stateful-mock-tests)
+    cpp-options: -DSTATEFUL_MOCK_TESTS
+
   if flag(secp256k1-support)
     cpp-options: -DSECP256K1_ENABLED
     exposed-modules:
@@ -409,6 +446,9 @@ test-suite tests
 
   other-modules:
     Test.Cardano.Crypto.PackedBytes.Spec
+
+  if flag(stateful-mock-tests)
+    cpp-options: -DSTATEFUL_MOCK_TESTS
 
   if flag(secp256k1-support)
     cpp-options: -DSECP256K1_ENABLED

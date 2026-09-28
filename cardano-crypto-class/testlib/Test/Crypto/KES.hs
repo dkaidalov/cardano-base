@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -122,7 +123,21 @@ tests lock =
       testKESAlgorithm @(HashedCompactSum1KES SlhDsaBb6DSIGN Blake2b_256)
         lock
         "HashedCompactSum1KES SlhDsaBb6"
+    statefulMockTests lock
     testSigSizes
+
+-- | The benchmark-only stateful leaf: about 0.9 s per key generation, so
+-- only with the @stateful-mock-tests@ cabal flag.
+statefulMockTests :: Lock -> Spec
+#ifdef STATEFUL_MOCK_TESTS
+statefulMockTests lock =
+  modifyMaxSuccess (const 5) $
+    testKESAlgorithm @(HashedCompactSum1KES XmssMockDSIGN Blake2b_256)
+      lock
+      "HashedCompactSum1KES XmssMock"
+#else
+statefulMockTests _ = return ()
+#endif
 
 -- | Signature sizes of the 64-period sums, in bytes. Only the innermost level
 -- of a sum carries full DSIGN verification keys; the levels above carry
@@ -148,6 +163,8 @@ testSigSizes =
       fixedSize (Proxy @(SigKES (HashedCompactSum6KES Falcon512DSIGN Blake2b_256))) `shouldBe` 1755
     it "HashedCompactSum6KES SlhDsaBb6 = 3584" $
       fixedSize (Proxy @(SigKES (HashedCompactSum6KES SlhDsaBb6DSIGN Blake2b_256))) `shouldBe` 3584
+    it "HashedCompactSum6KES XmssMock = 1732" $
+      fixedSize (Proxy @(SigKES (HashedCompactSum6KES XmssMockDSIGN Blake2b_256))) `shouldBe` 1732
 
 --------------------------------------------------------------------------------
 -- Show and Eq instances

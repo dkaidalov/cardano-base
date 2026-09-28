@@ -15,12 +15,14 @@ import Cardano.Crypto.DSIGN.Ed25519
 import Cardano.Crypto.DSIGN.Falcon512
 import Cardano.Crypto.DSIGN.MLDSA44
 import Cardano.Crypto.DSIGN.SlhDsaBb6
+import Cardano.Crypto.DSIGN.XmssMock
 import Cardano.Crypto.Falcon.Constants (FALCON512_SIGNKEYBYTES)
 import Cardano.Crypto.KES.Simple
 import Cardano.Crypto.Libsodium.MLockedBytes.Internal
 import Cardano.Crypto.Libsodium.MLockedSeed
 import Cardano.Crypto.MLDSA.Constants (MLDSA44_SIGNKEYBYTES)
 import Cardano.Crypto.SLHDSA.Constants (SLHDSA_BB6_SIGNKEYBYTES)
+import Cardano.Crypto.XMSS.Constants (XMSS_MOCK_SIGNKEYBYTES)
 
 -- | Monadic flavor of 'Eq', for things that can only be compared in a monadic
 -- context that satisfies 'MonadST'.
@@ -105,6 +107,11 @@ deriving via
   (MLockedSizedBytes SLHDSA_BB6_SIGNKEYBYTES)
   instance
     EqST (SignKeyDSIGNM SlhDsaBb6DSIGN)
+
+deriving via
+  (MLockedSizedBytes XMSS_MOCK_SIGNKEYBYTES)
+  instance
+    EqST (SignKeyDSIGNM XmssMockDSIGN)
 
 instance EqST (SignKeyDSIGNM d) => EqST (SignKeyKES (SimpleKES d t)) where
   equalsM (ThunkySignKeySimpleKES a) (ThunkySignKeySimpleKES b) =
