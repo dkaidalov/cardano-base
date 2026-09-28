@@ -46,6 +46,7 @@ module Cardano.Crypto.Libsodium.Memory.Internal (
   unsafeIOToMonadST,
 ) where
 
+import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, withMVar)
 import Control.DeepSeq (NFData (..), rwhnf)
 import Control.Exception (Exception, mask_)
 import Control.Monad (void, when)
@@ -69,7 +70,7 @@ import qualified Foreign.ForeignPtr as Foreign hiding (newForeignPtr)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import qualified Foreign.ForeignPtr.Unsafe as Foreign
 import Foreign.Marshal.Utils (fillBytes)
-import Foreign.Ptr (Ptr, castPtr, nullPtr)
+import Foreign.Ptr (Ptr, castPtr, minusPtr, nullPtr)
 import Foreign.Storable (Storable (peek), alignment, sizeOf)
 import GHC.IO.Exception (ioException)
 import GHC.TypeLits (KnownNat, natVal)
@@ -105,17 +106,40 @@ traceMLockedForeignPtr fptr = withMLockedForeignPtr fptr $ \ptr -> do
 unsafeIOToMonadST :: MonadST m => IO a -> m a
 unsafeIOToMonadST = stToIO . unsafeIOToST
 
+-- | The pages of one pool that are currently mapped: start address and size.
+--
+-- A pool page is unmapped by its finalizer (@sodium_free@), and each block
+-- handed out from it has its own finalizer that erases the block. Nothing
+-- orders the two: at program exit, or whenever a whole 'Pool' becomes garbage,
+-- a page and its live blocks die in the same GC and GHC runs their finalizers
+-- in unspecified order, so a block may be erased after its page is gone, which
+-- is a write to unmapped memory. Block finalizers therefore check here first
+-- and skip the erase when the page has already been freed; @sodium_free@
+-- zeroes the whole page anyway, so nothing is left behind.
+type LivePages = MVar [(Ptr (), Int)]
+
+inLivePage :: [(Ptr (), Int)] -> Ptr a -> Bool
+inLivePage pages ptr =
+  any (\(start, size) -> let off = castPtr ptr `minusPtr` start in off >= 0 && off < size) pages
+
 makeMLockedPool :: forall n s. KnownNat n => ST s (Pool n s)
 makeMLockedPool = do
+  livePages <- unsafeIOToST (newMVar [])
   initPool
     (max 1 . fromIntegral @Integer @Int $ 4096 `div` natVal (Proxy @n) `div` 64)
-    ( \size -> unsafeIOToST $ mask_ $ do
-        ptr <- sodiumMalloc (fromIntegral @Int @CSize size)
-        Foreign.newForeignPtr ptr (sodiumFree ptr (fromIntegral @Int @CSize size))
+    (\size -> unsafeIOToST $ mask_ $ allocPage livePages size)
+    ( \ptr -> withMVar livePages $ \pages ->
+        when (inLivePage pages ptr) $ eraseMem (Proxy @n) ptr
     )
-    ( \ptr -> do
-        eraseMem (Proxy @n) ptr
-    )
+  where
+    allocPage :: LivePages -> Int -> IO (Foreign.ForeignPtr a)
+    allocPage livePages size = do
+      ptr <- sodiumMalloc (fromIntegral @Int @CSize size)
+      modifyMVar_ livePages (return . ((castPtr ptr, size) :))
+      Foreign.newForeignPtr ptr $
+        modifyMVar_ livePages $ \pages -> do
+          sodiumFree ptr (fromIntegral @Int @CSize size)
+          return (filter ((/= castPtr ptr) . fst) pages)
 
 eraseMem :: forall n a. KnownNat n => Proxy n -> Ptr a -> IO ()
 eraseMem proxy ptr = fillBytes ptr 0xff (fromIntegral @Integer @Int $ natVal proxy)
