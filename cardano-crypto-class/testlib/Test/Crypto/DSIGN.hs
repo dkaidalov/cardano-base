@@ -55,6 +55,7 @@ import Cardano.Crypto.DSIGN (
   Ed448DSIGN,
   MLDSA44DSIGN,
   Falcon512DSIGN,
+  SlhDsaBb6DSIGN,
   aggregateVerKeysDSIGN,
   seedSizeDSIGN,
 
@@ -223,6 +224,11 @@ tests lock =
       -- 2210-byte in-memory sign key, see 'testDSIGNMAlgorithmWith'.
       modifyMaxSuccess (const 50) $
         testDSIGNMAlgorithmWith False lock (Proxy @Falcon512DSIGN) "Falcon512DSIGN"
+      -- bb-6 signs in about 0.2 s and generates keys in about 60 ms (portable
+      -- SHA-256), hence the small case count. Its 128-byte sign key is
+      -- pool-allocated, so the forgetting property applies.
+      modifyMaxSuccess (const 5) $
+        testDSIGNMAlgorithm lock (Proxy @SlhDsaBb6DSIGN) "SlhDsaBb6DSIGN"
      describe "Aggregatable" $ do
       testDSIGNAggregatableWithContext (Proxy @(BLS12381DSIGN Curve1)) blsSignContextGen blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinVerKeyDSIGN"
       testDSIGNAggregatableWithContext (Proxy @(BLS12381DSIGN Curve2)) blsSignContextGen blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinSigDSIGN"
