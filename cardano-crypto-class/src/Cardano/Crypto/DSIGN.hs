@@ -15,6 +15,7 @@ import Cardano.Crypto.DSIGN.MLDSA44 as X
 import Cardano.Crypto.DSIGN.Mock as X
 import Cardano.Crypto.DSIGN.NeverUsed as X
 import Cardano.Crypto.DSIGN.SlhDsaBb6 as X
+import Cardano.Crypto.DSIGN.XmssMock as X
 #ifdef SECP256K1_ENABLED
 import Cardano.Crypto.DSIGN.EcdsaSecp256k1 as X
 import Cardano.Crypto.DSIGN.SchnorrSecp256k1 as X

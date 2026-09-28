@@ -24,6 +24,7 @@ import Cardano.Crypto.DSIGN.Ed25519
 import Cardano.Crypto.DSIGN.Falcon512
 import Cardano.Crypto.DSIGN.MLDSA44
 import Cardano.Crypto.DSIGN.SlhDsaBb6
+import Cardano.Crypto.DSIGN.XmssMock
 #ifdef SECP256K1_ENABLED
 import Cardano.Crypto.DSIGN.EcdsaSecp256k1
 import Cardano.Crypto.DSIGN.SchnorrSecp256k1
@@ -41,6 +42,8 @@ benchmarks = bgroup "DSIGN"
   , benchDSIGN (Proxy :: Proxy MLDSA44DSIGN) "MLDSA44"
   , benchDSIGN (Proxy :: Proxy Falcon512DSIGN) "Falcon512"
   , benchDSIGN (Proxy :: Proxy SlhDsaBb6DSIGN) "SlhDsaBb6"
+    -- The pure signDSIGN of the mock signs at one-time index 0 every time.
+  , benchDSIGN (Proxy :: Proxy XmssMockDSIGN) "XmssMock"
   , benchDSIGN (Proxy :: Proxy BLS12381MinVerKeyDSIGN) "BLS12381MinVerKey"
   , benchDSIGN (Proxy :: Proxy BLS12381MinSigDSIGN) "BLS12381MinSig"
   , benchAggDSIGN (Proxy :: Proxy BLS12381MinVerKeyDSIGN) "BLS12381MinVerKey"
@@ -125,6 +128,9 @@ instance ExampleSignable Falcon512DSIGN ByteString where
 instance ExampleSignable SlhDsaBb6DSIGN ByteString where
   exampleSignableFrom _ = id
 
+instance ExampleSignable XmssMockDSIGN ByteString where
+  exampleSignableFrom _ = id
+
 instance ExampleSignable (BLS12381DSIGN curve) ByteString where
   exampleSignableFrom _ = id
 
@@ -152,6 +158,9 @@ instance ExampleContext Falcon512DSIGN where
   exampleContext _ = ()
 
 instance ExampleContext SlhDsaBb6DSIGN where
+  exampleContext _ = ()
+
+instance ExampleContext XmssMockDSIGN where
   exampleContext _ = ()
 
 #ifdef SECP256K1_ENABLED

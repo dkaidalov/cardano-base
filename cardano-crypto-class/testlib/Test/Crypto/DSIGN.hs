@@ -56,6 +56,9 @@ import Cardano.Crypto.DSIGN (
   MLDSA44DSIGN,
   Falcon512DSIGN,
   SlhDsaBb6DSIGN,
+#ifdef STATEFUL_MOCK_TESTS
+  XmssMockDSIGN,
+#endif
   aggregateVerKeysDSIGN,
   seedSizeDSIGN,
 
@@ -229,6 +232,13 @@ tests lock =
       -- pool-allocated, so the forgetting property applies.
       modifyMaxSuccess (const 5) $
         testDSIGNMAlgorithm lock (Proxy @SlhDsaBb6DSIGN) "SlhDsaBb6DSIGN"
+#ifdef STATEFUL_MOCK_TESTS
+      -- Benchmark mock with hidden one-time state; key generation is about
+      -- 0.9 s, hence the stateful-mock-tests flag. 1133-byte in-memory sign
+      -- key, see 'testDSIGNMAlgorithmWith'.
+      modifyMaxSuccess (const 10) $
+        testDSIGNMAlgorithmWith False lock (Proxy @XmssMockDSIGN) "XmssMockDSIGN"
+#endif
      describe "Aggregatable" $ do
       testDSIGNAggregatableWithContext (Proxy @(BLS12381DSIGN Curve1)) blsSignContextGen blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinVerKeyDSIGN"
       testDSIGNAggregatableWithContext (Proxy @(BLS12381DSIGN Curve2)) blsSignContextGen blsGenKeyWithContextGen (arbitrary @Message) "BLS12381MinSigDSIGN"

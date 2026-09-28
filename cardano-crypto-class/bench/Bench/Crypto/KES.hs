@@ -21,6 +21,7 @@ import Cardano.Crypto.DSIGN.Ed25519
 import Cardano.Crypto.DSIGN.Falcon512
 import Cardano.Crypto.DSIGN.MLDSA44
 import Cardano.Crypto.DSIGN.SlhDsaBb6
+import Cardano.Crypto.DSIGN.XmssMock
 import Cardano.Crypto.Hash.Blake2b
 import Cardano.Crypto.KES.Class
 import Cardano.Crypto.KES.CompactSum
@@ -62,6 +63,12 @@ benchmarks =
     , benchKES @Proxy @(HashedCompactSum6KES SlhDsaBb6DSIGN Blake2b_256)
         Proxy
         "HashedCompactSum6KES SlhDsaBb6"
+    , -- The XMSS mock consumes a one-time key per signKES and has 1023 of
+      -- them; the sign and verify rows cycle four keys, see 'benchKESWith'.
+      benchKESWith @Proxy @(HashedCompactSum6KES XmssMockDSIGN Blake2b_256)
+        4
+        Proxy
+        "HashedCompactSum6KES XmssMock"
     ]
 
 -- | Benchmark the four KES operations for one scheme.
@@ -93,15 +100,38 @@ benchKES ::
   proxy v ->
   [Char] ->
   Benchmark
-benchKES _ lbl =
+benchKES = benchKESWith 1
+
+-- | As 'benchKES', with the number of sign keys the signKES row cycles
+-- through and the verifyKES row's signatures are spread over. One key is
+-- right for stateless leaves. A stateful leaf consumes a one-time key per
+-- signature and refuses to sign once they are used up, so its rows spread
+-- the signatures over several keys; the keys are generated in the 'env',
+-- outside the timed region. All keys come from the same seed, so they share
+-- one verification key.
+{-# NOINLINE benchKESWith #-}
+benchKESWith ::
+  forall (proxy :: forall k. k -> Type) v.
+  ( KESAlgorithm v
+  , ContextKES v ~ ()
+  , Signable v BS.ByteString
+  , NFData (SignKeyKES v)
+  , NFData (VerKeyKES v)
+  , NFData (SigKES v)
+  ) =>
+  Int ->
+  proxy v ->
+  [Char] ->
+  Benchmark
+benchKESWith signKeyCount _ lbl =
   bgroup
     lbl
     [ bench "genKey" $
         nfIO $
           genKeyKES @v testSeedML >>= forgetSignKeyKES @v
-    , env genSignKeyAndMsgs $ \ ~(signKey, nextMsg) ->
+    , env genSignKeysAndMsgs $ \nextKeyAndMsg ->
         bench "signKES" $
-          perRunEnv (nextInput nextMsg) $ \msg ->
+          perRunEnv (nextInput nextKeyAndMsg) $ \ ~(signKey, msg) ->
             signKES @v () 0 msg signKey
     , env genVerKeyAndSigs $ \ ~(verKey, nextPair) ->
         bench "verifyKES" $
@@ -117,18 +147,26 @@ benchKES _ lbl =
             updateKES @v () signKey worstPeriod >>= forgetSignKeyKES @v . fromJust
     ]
   where
-    genSignKeyAndMsgs :: IO (SignKeyKES v, InputCycle BS.ByteString)
-    genSignKeyAndMsgs = do
-      signKey <- genKeyKES @v testSeedML
-      nextMsg <- newInputCycle typicalMsgs
-      return (signKey, nextMsg)
+    -- Pairs every message with one of the sign keys in turn, so that with
+    -- k keys the cycle is k * typicalMsgCount long and each key is used once
+    -- per k runs.
+    genSignKeysAndMsgs :: IO (InputCycle (SignKeyKES v, BS.ByteString))
+    genSignKeysAndMsgs = do
+      signKeys <- mapM (const (genKeyKES @v testSeedML)) [1 .. signKeyCount]
+      newInputCycle
+        [ (signKeys !! (i `mod` signKeyCount), msg)
+        | (i, msg) <- zip [0 :: Int ..] (concat (replicate signKeyCount typicalMsgs))
+        ]
 
     genVerKeyAndSigs :: IO (VerKeyKES v, InputCycle (BS.ByteString, SigKES v))
     genVerKeyAndSigs = do
-      signKey <- genKeyKES @v testSeedML
-      sigs <- mapM (\msg -> signKES @v () 0 msg signKey) typicalMsgs
-      verKey <- deriveVerKeyKES signKey
-      forgetSignKeyKES signKey
+      signKeys <- mapM (const (genKeyKES @v testSeedML)) [1 .. signKeyCount]
+      sigs <-
+        mapM
+          (\(i, msg) -> signKES @v () 0 msg (signKeys !! (i `mod` signKeyCount)))
+          (zip [0 :: Int ..] typicalMsgs)
+      verKey <- deriveVerKeyKES (head signKeys)
+      mapM_ forgetSignKeyKES signKeys
       pairs <- evaluate $ force (zip typicalMsgs sigs)
       nextPair <- newInputCycle pairs
       return (verKey, nextPair)
