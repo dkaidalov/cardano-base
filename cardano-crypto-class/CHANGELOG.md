@@ -36,6 +36,9 @@
   one-time key. It exists to measure what a stateful leaf costs in the KES
   compositions and must not be used for anything else.
   `HashedCompactSum6KES XmssMockDSIGN Blake2b_256` signatures are 1732 bytes.
+  With `pq-native-backends` its SHA-256 uses the x86 SHA extensions when the
+  CPU has them (`cbits/xmss-compat/cardano_sha256_fast.c`), about 2.5x faster
+  than the reference over portable hashing.
 * `Bench.Crypto.KES.benchKESWith` cycles the signKES row over several keys,
   for leaves with a bounded number of signatures per key.
 * Fix a segfault at program exit in the mlocked memory pools: a block's
