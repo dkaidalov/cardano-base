@@ -17,17 +17,42 @@
 -- | Falcon-512 digital signatures, over the vendored PQClean
 -- @falcon-padded-512@ sources in @cbits/falcon-padded-512@.
 --
--- Key generation is derived from a 32-octet seed. Signing is deterministic:
--- the nonce and the Gaussian sampler seed are derived from the private key
--- and the message (Falcon as specified draws both at random; this keeps the
--- pure 'signDSIGN' honest and does not change the cost). Signatures use the
--- padded, fixed-length 666-octet encoding.
+-- __Benchmark-grade only. Not for production use.__ This instance departs
+-- from Falcon as specified (and from the FN-DSA draft, FIPS 206) in two
+-- places, both on the signer's side:
 --
--- The in-memory sign key is @seed || sk || pk@ (32 + 1281 + 897 octets), so
--- that 'deriveVerKeyDSIGN' and 'getSeedDSIGNM' are plain copies. Only the
+-- * /Deterministic key derivation./ Falcon generates keys from a random
+--   number generator; it defines no mapping from a seed to a key pair. Here
+--   a 32-octet seed is absorbed into the SHAKE256 that drives PQClean's key
+--   generation, so that the same seed always yields the same key. The DSIGN
+--   classes need this ('genKeyDSIGN' is pure, and the seed is what gets
+--   serialised), but the derivation is ours, not the standard's.
+--
+-- * /Deterministic signing./ Falcon draws a fresh 40-octet nonce and the
+--   Gaussian sampler's randomness for every signature. Here both are
+--   derived from the private key and the message, so that the pure
+--   'signDSIGN' is a function. The construction is the usual one for
+--   derandomising a signature scheme, and a verifier cannot tell the
+--   difference since the nonce travels in the signature, but its security
+--   for Falcon has not been proven or reviewed, and it gives up the
+--   protection fresh randomness offers against fault attacks and against
+--   side channels that need many traces of the same key. It does not change
+--   signing or verification cost, which is all this instance is for.
+--
+-- A deployable instance would keep the standard's randomised key generation
+-- and signing (or a reviewed hedged variant), and would have to answer the
+-- constant-time question for the floating-point Gaussian sampler, which
+-- this wrapper inherits from PQClean unchanged: integer-emulated floating
+-- point in the portable build, hardware doubles in the AVX2 build.
+-- Verification uses PQClean's code unchanged and is integer-only.
+--
+-- Signatures use the padded, fixed-length 666-octet encoding of PQClean's
+-- @falcon-padded-512@, which tracks the FN-DSA draft. The in-memory sign
+-- key is @seed || sk || pk@ (32 + 1281 + 897 octets), so that
+-- 'deriveVerKeyDSIGN' and 'getSeedDSIGNM' are plain copies. Only the
 -- 32-octet seed is serialised; the expanded key is regenerated on
--- deserialisation, which for Falcon costs a full key generation (about
--- 10 ms).
+-- deserialisation through the derivation above, which costs a full key
+-- generation (5 to 10 ms).
 module Cardano.Crypto.DSIGN.Falcon512 (
   Falcon512DSIGN,
   SigDSIGN (..),

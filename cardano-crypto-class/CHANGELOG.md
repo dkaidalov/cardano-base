@@ -15,10 +15,12 @@
 * Add `Falcon512DSIGN`, a Falcon-512 `DSIGNAlgorithm` and `DSIGNMAlgorithm`
   instance over vendored PQClean `falcon-padded-512` sources
   (`cbits/falcon-padded-512`, portable build by default, AVX2 build with the
-  `pq-native-backends` flag, which replaces `mldsa-native-backend`). Key
-  generation is seed-derived and signing deterministic; signatures use the
-  padded 666-byte encoding. `HashedCompactSum6KES Falcon512DSIGN Blake2b_256`
-  signatures are 1755 bytes.
+  `pq-native-backends` flag, which replaces `mldsa-native-backend`).
+  Benchmark-grade only, not for production: key generation is derived from a
+  seed and signing is deterministic, neither of which Falcon or the FN-DSA
+  draft specify, and the security of the deterministic variant has not been
+  proven or reviewed. Signatures use the padded 666-byte encoding.
+  `HashedCompactSum6KES Falcon512DSIGN Blake2b_256` signatures are 1755 bytes.
 * Add `SlhDsaBb6DSIGN`, SLH-DSA (FIPS 205 mechanisms) with the reduced-budget
   parameter set bb-6 of Fluhrer and Dang (n = 16, h = 9, d = 1, FORS 11 x
   2^14, w = 16, SHA2-simple; 2^10 signatures per key; published but not
