@@ -163,8 +163,8 @@ testSigSizes =
       fixedSize (Proxy @(SigKES (HashedCompactSum6KES Falcon512DSIGN Blake2b_256))) `shouldBe` 1755
     it "HashedCompactSum6KES SlhDsaBb6 = 3584" $
       fixedSize (Proxy @(SigKES (HashedCompactSum6KES SlhDsaBb6DSIGN Blake2b_256))) `shouldBe` 3584
-    it "HashedCompactSum6KES XmssMock = 1732" $
-      fixedSize (Proxy @(SigKES (HashedCompactSum6KES XmssMockDSIGN Blake2b_256))) `shouldBe` 1732
+    it "HashedCompactSum6KES XmssMock = 2756" $
+      fixedSize (Proxy @(SigKES (HashedCompactSum6KES XmssMockDSIGN Blake2b_256))) `shouldBe` 2756
 
 --------------------------------------------------------------------------------
 -- Show and Eq instances

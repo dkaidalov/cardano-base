@@ -64,9 +64,11 @@ benchmarks =
         Proxy
         "HashedCompactSum6KES SlhDsaBb6"
     , -- The XMSS mock consumes a one-time key per signKES and has 1023 of
-      -- them; the sign and verify rows cycle four keys, see 'benchKESWith'.
+      -- them; the sign and verify rows cycle sixteen keys (over 16000
+      -- signatures, more than Criterion's runs at this speed), see
+      -- 'benchKESWith'.
       benchKESWith @Proxy @(HashedCompactSum6KES XmssMockDSIGN Blake2b_256)
-        4
+        16
         Proxy
         "HashedCompactSum6KES XmssMock"
     ]
@@ -106,9 +108,11 @@ benchKES = benchKESWith 1
 -- through and the verifyKES row's signatures are spread over. One key is
 -- right for stateless leaves. A stateful leaf consumes a one-time key per
 -- signature and refuses to sign once they are used up, so its rows spread
--- the signatures over several keys; the keys are generated in the 'env',
--- outside the timed region. All keys come from the same seed, so they share
--- one verification key.
+-- the signatures over several keys, each used at most
+-- @typicalMsgCount - 1@ (1023) times per cycle; the keys are generated in
+-- the 'env', outside the timed region. All keys come from the same seed, so
+-- they share one verification key. Criterion's run count grows as the
+-- operation gets faster, so the key count has to cover it.
 {-# NOINLINE benchKESWith #-}
 benchKESWith ::
   forall (proxy :: forall k. k -> Type) v.
@@ -147,15 +151,19 @@ benchKESWith signKeyCount _ lbl =
             updateKES @v () signKey worstPeriod >>= forgetSignKeyKES @v . fromJust
     ]
   where
-    -- Pairs every message with one of the sign keys in turn, so that with
-    -- k keys the cycle is k * typicalMsgCount long and each key is used once
-    -- per k runs.
+    -- Pairs every message with one of the sign keys in turn. With one key
+    -- the cycle is the message set; with k keys it is k * (typicalMsgCount
+    -- - 1) long and each key is used 1023 times per cycle, which is what a
+    -- 2^10 one-time-key leaf allows.
     genSignKeysAndMsgs :: IO (InputCycle (SignKeyKES v, BS.ByteString))
     genSignKeysAndMsgs = do
       signKeys <- mapM (const (genKeyKES @v testSeedML)) [1 .. signKeyCount]
+      let msgs
+            | signKeyCount == 1 = typicalMsgs
+            | otherwise = take (typicalMsgCount - 1) typicalMsgs
       newInputCycle
         [ (signKeys !! (i `mod` signKeyCount), msg)
-        | (i, msg) <- zip [0 :: Int ..] (concat (replicate signKeyCount typicalMsgs))
+        | (i, msg) <- zip [0 :: Int ..] (concat (replicate signKeyCount msgs))
         ]
 
     genVerKeyAndSigs :: IO (VerKeyKES v, InputCycle (BS.ByteString, SigKES v))

@@ -96,13 +96,17 @@ static void sha256_shani_blocks(uint32_t state[8], const uint8_t *data, size_t n
   _mm_storeu_si128((__m128i *)&state[4], STATE1);
 }
 
-void cardano_sha256_shani(uint8_t out[32], const uint8_t *in, size_t len)
+static const uint32_t IV[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+                               0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
+
+/* Absorb in[0..len) into state (already holding `done` bytes' worth of
+ * complete blocks), pad for a total length of done + len, and write out. */
+static void sha256_shani_finish(uint8_t out[32], uint32_t state[8], size_t done,
+                                const uint8_t *in, size_t len)
 {
-  uint32_t state[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-                       0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
   uint8_t last[128];
   size_t full = len & ~(size_t)63, rem = len - full, padlen;
-  uint64_t bits = (uint64_t)len * 8;
+  uint64_t bits = (uint64_t)(done + len) * 8;
   int i;
 
   if (full) sha256_shani_blocks(state, in, full / 64);
@@ -120,6 +124,13 @@ void cardano_sha256_shani(uint8_t out[32], const uint8_t *in, size_t len)
   }
 }
 
+void cardano_sha256_shani(uint8_t out[32], const uint8_t *in, size_t len)
+{
+  uint32_t state[8];
+  memcpy(state, IV, sizeof state);
+  sha256_shani_finish(out, state, 0, in, len);
+}
+
 #else /* !CARDANO_HAVE_SHANI_CODE */
 
 void cardano_sha256_shani(uint8_t out[32], const uint8_t *in, size_t len)
@@ -135,5 +146,46 @@ void cardano_sha256_fast(uint8_t out[32], const uint8_t *in, size_t len)
     cardano_sha256_shani(out, in, len);
   } else {
     crypto_hash_sha256(out, in, (unsigned long long)len);
+  }
+}
+
+typedef char cardano_sha256_mid_static_assert
+    [sizeof(crypto_hash_sha256_state) <= 104 ? 1 : -1];
+
+void cardano_sha256_mid_init(cardano_sha256_mid *mid, const uint8_t *prefix, size_t prefixlen)
+{
+  mid->prefixlen = prefixlen;
+  mid->shani = cardano_sha256_shani_available();
+#if CARDANO_HAVE_SHANI_CODE
+  if (mid->shani) {
+    memcpy(mid->st, IV, sizeof mid->st);
+    if (prefixlen) sha256_shani_blocks(mid->st, prefix, prefixlen / 64);
+    return;
+  }
+#endif
+  {
+    crypto_hash_sha256_state st;
+    crypto_hash_sha256_init(&st);
+    crypto_hash_sha256_update(&st, prefix, (unsigned long long)prefixlen);
+    memcpy(mid->sodium, &st, sizeof st);
+  }
+}
+
+void cardano_sha256_mid_finish(uint8_t out[32], const cardano_sha256_mid *mid,
+                               const uint8_t *rest, size_t restlen)
+{
+#if CARDANO_HAVE_SHANI_CODE
+  if (mid->shani) {
+    uint32_t state[8];
+    memcpy(state, mid->st, sizeof state);
+    sha256_shani_finish(out, state, mid->prefixlen, rest, restlen);
+    return;
+  }
+#endif
+  {
+    crypto_hash_sha256_state st;
+    memcpy(&st, mid->sodium, sizeof st);
+    crypto_hash_sha256_update(&st, rest, (unsigned long long)restlen);
+    crypto_hash_sha256_final(&st, out);
   }
 }
