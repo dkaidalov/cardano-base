@@ -14,7 +14,7 @@
 -- float out of lambdas and become nondeterministic under -N.
 {-# OPTIONS_GHC -fno-full-laziness #-}
 
--- | BENCHMARK-ONLY stateful leaf: XMSS-SHA2_10_192 (RFC 8391, SP 800-208)
+-- | BENCHMARK-ONLY stateful leaf: XMSS-SHA2_10_256 (RFC 8391, SP 800-208)
 -- over the vendored XMSS reference implementation in @cbits/xmss-reference@,
 -- with BDS tree traversal.
 --
@@ -36,9 +36,12 @@
 -- exists to measure what a stateful leaf costs in this composition, next to
 -- the stateless ones. Do not use it for anything else.
 --
--- The in-memory sign key is @seed || sk || pk@ (32 + 1053 + 48 octets). Key
--- generation builds the whole 2^10-leaf tree (about a quarter of a second
--- with portable SHA-256).
+-- The in-memory sign key is @seed || sk || pk@ (32 + 1373 + 64 octets). Key
+-- generation builds the whole 2^10-leaf tree (about a second with the
+-- reference's portable hashing, a quarter of that with @pq-native-backends@,
+-- which adds SHA-NI and a cached midstate for the PRF prefix). The parameter
+-- set is the one the pq-kes Rust experiment measures, so the two can be
+-- compared row by row.
 module Cardano.Crypto.DSIGN.XmssMock (
   XmssMockDSIGN,
   SigDSIGN (..),
@@ -170,7 +173,7 @@ instance DSIGNAlgorithm XmssMockDSIGN where
   -- Metadata and basic key operations
   --
 
-  algorithmNameDSIGN _ = "xmss_sha2_10_192_mock"
+  algorithmNameDSIGN _ = "xmss_sha2_10_256_mock"
 
   deriveVerKeyDSIGN (SignKeyXmssMockDSIGN sk) =
     VerKeyXmssMockDSIGN $

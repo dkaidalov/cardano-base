@@ -37,27 +37,25 @@ static int get_params(xmss_params *params)
   if (params->pk_bytes != CARDANO_XMSS_MOCK_PUBLICKEYBYTES ||
       params->sk_bytes != CARDANO_XMSS_MOCK_SECRETKEYBYTES ||
       params->sig_bytes != CARDANO_XMSS_MOCK_SIGBYTES ||
-      params->n != 24) {
+      params->n != 32) {
     return -1;
   }
   return 0;
 }
 
-/* seed72 = SHA256(0x00||seed) || SHA256(0x01||seed) || SHA256(0x02||seed)[..8) */
-static void expand_seed(uint8_t out[72], const uint8_t seed[CARDANO_XMSS_MOCK_SEEDBYTES])
+/* seed96 = SHA256(0x00||seed) || SHA256(0x01||seed) || SHA256(0x02||seed):
+ * SK_SEED || SK_PRF || PUB_SEED, n = 32 each. */
+static void expand_seed(uint8_t out[96], const uint8_t seed[CARDANO_XMSS_MOCK_SEEDBYTES])
 {
   uint8_t buf[1 + CARDANO_XMSS_MOCK_SEEDBYTES];
-  uint8_t h[32];
   memcpy(buf + 1, seed, CARDANO_XMSS_MOCK_SEEDBYTES);
   buf[0] = 0;
   crypto_hash_sha256(out, buf, sizeof buf);
   buf[0] = 1;
   crypto_hash_sha256(out + 32, buf, sizeof buf);
   buf[0] = 2;
-  crypto_hash_sha256(h, buf, sizeof buf);
-  memcpy(out + 64, h, 8);
+  crypto_hash_sha256(out + 64, buf, sizeof buf);
   sodium_memzero(buf, sizeof buf);
-  sodium_memzero(h, sizeof h);
 }
 
 int cardano_xmss_mock_signkey_from_seed(
@@ -66,21 +64,21 @@ int cardano_xmss_mock_signkey_from_seed(
 {
   xmss_params params;
   uint8_t tmp[CARDANO_XMSS_MOCK_SEEDBYTES];
-  uint8_t seed72[72]; /* 3 * n */
+  uint8_t seed96[96]; /* 3 * n */
   int rc;
   if (get_params(&params) != 0) return -1;
   memcpy(tmp, seed, sizeof tmp); /* seed may alias the destination */
   memcpy(signkey + CARDANO_XMSS_MOCK_SIGNKEY_SEED_OFFSET, tmp, sizeof tmp);
-  expand_seed(seed72, tmp);
-  seed_src = seed72;
-  seed_src_left = sizeof seed72;
+  expand_seed(seed96, tmp);
+  seed_src = seed96;
+  seed_src_left = sizeof seed96;
   rc = xmss_core_keypair(&params, signkey + CARDANO_XMSS_MOCK_SIGNKEY_PK_OFFSET,
                          signkey + CARDANO_XMSS_MOCK_SIGNKEY_SK_OFFSET);
   if (rc == 0 && seed_src_left != 0) rc = -1; /* the core drew fewer bytes than expected */
   seed_src = NULL;
   seed_src_left = 0;
   sodium_memzero(tmp, sizeof tmp);
-  sodium_memzero(seed72, sizeof seed72);
+  sodium_memzero(seed96, sizeof seed96);
   return rc;
 }
 

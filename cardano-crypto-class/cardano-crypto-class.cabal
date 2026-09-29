@@ -91,9 +91,9 @@ flag pq-native-backends
     backends instead of portable C: mldsa-native's assembly backends
     (AVX2 on x86_64), PQClean's AVX2 Falcon (hardware floating point
     instead of the portable build's integer emulation), the SPHINCS+
-    8-way AVX2 SHA-256 variant, and SHA-NI SHA-256 for the XMSS reference
-    (chosen at run time). Requires a CPU with AVX2, BMI2 and FMA on
-    x86_64. Note that the -m flags apply to
+    8-way AVX2 SHA-256 variant, and for the XMSS reference SHA-NI SHA-256
+    (chosen at run time) plus cached PRF midstates. Requires a CPU with
+    AVX2, BMI2 and FMA on x86_64. Note that the -m flags apply to
     every C source of the library.
 
   default: False
@@ -354,7 +354,9 @@ library
 
     if arch(x86_64)
       -- SHA-NI is chosen at run time (see cbits/xmss-compat), so no -msha.
-      cc-options: -mavx2 -mbmi2 -mfma -DCARDANO_XMSS_SHANI
+      -- CARDANO_XMSS_MIDSTATE caches the PRF prefix block in the XMSS
+      -- reference (cbits/xmss-reference/hash.c).
+      cc-options: -mavx2 -mbmi2 -mfma -DCARDANO_XMSS_SHANI -DCARDANO_XMSS_MIDSTATE
       asm-options: -mavx2 -mbmi2
 
   if flag(secp256k1-support)

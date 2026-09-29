@@ -28,17 +28,18 @@
   (`cbits/sphincsplus-ref`, or `cbits/sphincsplus-sha2-avx2` with
   `pq-native-backends`). Deterministic signing, seed-derived key generation.
   `HashedCompactSum6KES SlhDsaBb6DSIGN Blake2b_256` signatures are 3584 bytes.
-* Add `XmssMockDSIGN`, a BENCHMARK-ONLY stateful leaf: XMSS-SHA2_10_192
+* Add `XmssMockDSIGN`, a BENCHMARK-ONLY stateful leaf: XMSS-SHA2_10_256
   (RFC 8391) over the vendored XMSS reference implementation
   (`cbits/xmss-reference`, BDS traversal), with the one-time index and
   traversal state kept inside the mlocked sign key and advanced by
   `signDSIGNM`; the pure `signDSIGN` signs on a copy and reuses the current
   one-time key. It exists to measure what a stateful leaf costs in the KES
   compositions and must not be used for anything else.
-  `HashedCompactSum6KES XmssMockDSIGN Blake2b_256` signatures are 1732 bytes.
+  `HashedCompactSum6KES XmssMockDSIGN Blake2b_256` signatures are 2756 bytes.
   With `pq-native-backends` its SHA-256 uses the x86 SHA extensions when the
-  CPU has them (`cbits/xmss-compat/cardano_sha256_fast.c`), about 2.5x faster
-  than the reference over portable hashing.
+  CPU has them (`cbits/xmss-compat/cardano_sha256_fast.c`) and the PRF calls
+  reuse a cached midstate of their one-block prefix, together about 4.8x
+  faster than the reference over portable hashing.
 * `Bench.Crypto.KES.benchKESWith` cycles the signKES row over several keys,
   for leaves with a bounded number of signatures per key.
 * Fix a segfault at program exit in the mlocked memory pools: a block's

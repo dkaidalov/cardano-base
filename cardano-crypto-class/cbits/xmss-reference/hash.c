@@ -14,6 +14,38 @@
 #define XMSS_HASH_PADDING_PRF 3
 #define XMSS_HASH_PADDING_PRF_KEYGEN 4
 
+/* cardano-crypto-class: for the SHA-2 sets with n = 32 the prefix
+ * toByte(type, 32) || key of PRF and PRF_keygen is exactly one SHA-256
+ * block, and the key (PUB_SEED, or SK_SEED for PRF_keygen) is constant for
+ * the lifetime of a key pair. Cache the compression state after that block,
+ * per PRF type, keyed on the key bytes, and only hash the input on top of
+ * it: PRF drops from 2 compressions to 1, PRF_keygen from 3 to 2. The
+ * result is identical to the plain hash. */
+#if defined(CARDANO_XMSS_MIDSTATE)
+#include "cardano_sha256_fast.h"
+
+static int prf_with_midstate(unsigned char *out, int type,
+                             const unsigned char key[32],
+                             const unsigned char *in, unsigned long long inlen)
+{
+    static __thread cardano_sha256_mid cache[2];
+    static __thread unsigned char cache_key[2][32];
+    static __thread int cache_valid[2] = {0, 0};
+    int slot = (type == XMSS_HASH_PADDING_PRF) ? 0 : 1;
+
+    if (!cache_valid[slot] || memcmp(cache_key[slot], key, 32) != 0) {
+        unsigned char block[64];
+        ull_to_bytes(block, 32, type);
+        memcpy(block + 32, key, 32);
+        cardano_sha256_mid_init(&cache[slot], block, 64);
+        memcpy(cache_key[slot], key, 32);
+        cache_valid[slot] = 1;
+    }
+    cardano_sha256_mid_finish(out, &cache[slot], in, inlen);
+    return 0;
+}
+#endif
+
 void addr_to_bytes(unsigned char *bytes, const uint32_t addr[8])
 {
     int i;
@@ -64,6 +96,11 @@ int prf(const xmss_params *params,
         const unsigned char *key)
 {
     unsigned char buf[params->padding_len + params->n + 32];
+#if defined(CARDANO_XMSS_MIDSTATE)
+    if (params->func == XMSS_SHA2 && params->n == 32 && params->padding_len == 32) {
+        return prf_with_midstate(out, XMSS_HASH_PADDING_PRF, key, in, 32);
+    }
+#endif
 
     ull_to_bytes(buf, params->padding_len, XMSS_HASH_PADDING_PRF);
     memcpy(buf + params->padding_len, key, params->n);
@@ -81,6 +118,11 @@ int prf_keygen(const xmss_params *params,
         const unsigned char *key)
 {
     unsigned char buf[params->padding_len + 2*params->n + 32];
+#if defined(CARDANO_XMSS_MIDSTATE)
+    if (params->func == XMSS_SHA2 && params->n == 32 && params->padding_len == 32) {
+        return prf_with_midstate(out, XMSS_HASH_PADDING_PRF_KEYGEN, key, in, params->n + 32);
+    }
+#endif
 
     ull_to_bytes(buf, params->padding_len, XMSS_HASH_PADDING_PRF_KEYGEN);
     memcpy(buf + params->padding_len, key, params->n);

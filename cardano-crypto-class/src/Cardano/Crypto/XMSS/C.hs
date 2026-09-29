@@ -1,7 +1,7 @@
 {-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE DataKinds #-}
 
--- | FFI bindings to the XMSS-SHA2_10_192 benchmark mock in
+-- | FFI bindings to the XMSS-SHA2_10_256 benchmark mock in
 -- @cbits/cardano_xmss_mock.c@, a thin layer over the vendored XMSS reference
 -- implementation in @cbits/xmss-reference@. See "Cardano.Crypto.DSIGN.XmssMock"
 -- for what makes it a mock.

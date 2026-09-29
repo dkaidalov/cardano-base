@@ -223,7 +223,7 @@ tests lock =
         testDSIGNMAlgorithm lock (Proxy @SlhDsaBb6DSIGN) "SlhDsaBb6DSIGN"
 #ifdef STATEFUL_MOCK_TESTS
       -- Benchmark mock with hidden one-time state; key generation is about
-      -- 0.9 s, hence the stateful-mock-tests flag. 1133-byte in-memory sign
+      -- a second, hence the stateful-mock-tests flag. 1469-byte in-memory sign
       -- key, see 'testDSIGNMAlgorithmWith'.
       modifyMaxSuccess (const 10) $
         testDSIGNMAlgorithmWith False lock (Proxy @XmssMockDSIGN) "XmssMockDSIGN"
