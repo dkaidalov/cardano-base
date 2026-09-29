@@ -7,16 +7,29 @@
 #include <string.h>
 
 #include "cardano_slhdsa_bb6.h"
-#include "params.h"
-#include "address.h"
-#include "context.h"
-#include "fors.h"
-#include "hash.h"
-#include "merkle.h"
-#include "sha2.h"
-#include "thash.h"
-#include "utils.h"
-#include "wots.h"
+#if defined(CARDANO_SLHDSA_AVX2)
+#include "sphincsplus-sha2-avx2/params.h"
+#include "sphincsplus-sha2-avx2/address.h"
+#include "sphincsplus-sha2-avx2/context.h"
+#include "sphincsplus-sha2-avx2/fors.h"
+#include "sphincsplus-sha2-avx2/hash.h"
+#include "sphincsplus-sha2-avx2/merkle.h"
+#include "sphincsplus-sha2-avx2/sha2.h"
+#include "sphincsplus-sha2-avx2/thash.h"
+#include "sphincsplus-sha2-avx2/utils.h"
+#include "sphincsplus-sha2-avx2/wots.h"
+#else
+#include "sphincsplus-ref/params.h"
+#include "sphincsplus-ref/address.h"
+#include "sphincsplus-ref/context.h"
+#include "sphincsplus-ref/fors.h"
+#include "sphincsplus-ref/hash.h"
+#include "sphincsplus-ref/merkle.h"
+#include "sphincsplus-ref/sha2.h"
+#include "sphincsplus-ref/thash.h"
+#include "sphincsplus-ref/utils.h"
+#include "sphincsplus-ref/wots.h"
+#endif
 
 typedef char cardano_slhdsa_bb6_static_assert_pk
     [CARDANO_SLHDSA_BB6_PUBLICKEYBYTES == SPX_PK_BYTES ? 1 : -1];

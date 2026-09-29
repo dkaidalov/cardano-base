@@ -7,8 +7,13 @@
 #include <string.h>
 
 #include "cardano_falcon512.h"
-#include "api.h"
-#include "inner.h"
+#if defined(CARDANO_FALCON512_AVX2)
+#include "falcon-padded-512/avx2/api.h"
+#include "falcon-padded-512/avx2/inner.h"
+#else
+#include "falcon-padded-512/clean/api.h"
+#include "falcon-padded-512/clean/inner.h"
+#endif
 
 #define LOGN 9
 #define N 512

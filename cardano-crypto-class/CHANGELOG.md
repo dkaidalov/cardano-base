@@ -2,6 +2,16 @@
 
 ## Unreleased (pq-kes branch)
 
+* Add `PaddedKES pad spinUs k`, a benchmarking wrapper around any KES scheme
+  that appends `pad` zero bytes to every signature and busy-waits `spinUs`
+  microseconds after each successful verification. Keys and key evolution
+  pass through unchanged. For test-network experiments only.
+* Add `Falcon512DSIGN`, `SlhDsaBb6DSIGN` and `XmssMockDSIGN` benchmark-grade
+  leaves, and `HashedSingleKES` with the `HashedCompactSumNKES` aliases.
+* Fix the C shims for Falcon, SLH-DSA and XMSS to include their vendored
+  headers by directory, since `api.h`, `params.h`, `hash.h`, `utils.h` and
+  `wots.h` exist in several vendored trees on the include path.
+* Fix an exit-time segfault in the mlocked memory pools.
 * Add `MLDSA44DSIGN`, an ML-DSA-44 (FIPS 204) `DSIGNAlgorithm` and
   `DSIGNMAlgorithm` instance over vendored mldsa-native sources
   (`cbits/mldsa-native`, pinned in `cbits/mldsa-native/UPSTREAM_COMMIT`).

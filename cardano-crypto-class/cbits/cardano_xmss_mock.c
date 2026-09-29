@@ -5,8 +5,8 @@
 #include <sodium.h>
 
 #include "cardano_xmss_mock.h"
-#include "params.h"
-#include "xmss_core.h"
+#include "xmss-reference/params.h"
+#include "xmss-reference/xmss_core.h"
 
 /* The BDS core has no seeded key generation: xmss_core_keypair draws
  * SK_SEED || SK_PRF (2n bytes) and PUB_SEED (n bytes) from randombytes().

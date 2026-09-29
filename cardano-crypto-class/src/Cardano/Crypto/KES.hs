@@ -10,6 +10,7 @@ import Cardano.Crypto.KES.CompactSum as X
 import Cardano.Crypto.KES.HashedSingle as X
 import Cardano.Crypto.KES.Mock as X
 import Cardano.Crypto.KES.NeverUsed as X
+import Cardano.Crypto.KES.Padded as X
 import Cardano.Crypto.KES.Simple as X
 import Cardano.Crypto.KES.Single as X
 import Cardano.Crypto.KES.Sum as X
