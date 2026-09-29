@@ -60,6 +60,7 @@ extra-source-files:
   cbits/sphincsplus-sha2-avx2/params/*.h
   cbits/cardano_xmss_mock.h
   cbits/xmss-compat/openssl/sha.h
+  cbits/xmss-compat/cardano_sha256_fast.h
   cbits/xmss-reference/LICENSE
   cbits/xmss-reference/README.md
   cbits/xmss-reference/UPSTREAM_COMMIT
@@ -89,8 +90,9 @@ flag pq-native-backends
     Build the vendored post-quantum signature sources with their optimised
     backends instead of portable C: mldsa-native's assembly backends
     (AVX2 on x86_64), PQClean's AVX2 Falcon (hardware floating point
-    instead of the portable build's integer emulation) and the SPHINCS+
-    8-way AVX2 SHA-256 variant. Requires a CPU with AVX2, BMI2 and FMA on
+    instead of the portable build's integer emulation), the SPHINCS+
+    8-way AVX2 SHA-256 variant, and SHA-NI SHA-256 for the XMSS reference
+    (chosen at run time). Requires a CPU with AVX2, BMI2 and FMA on
     x86_64. Note that the -m flags apply to
     every C source of the library.
 
@@ -239,6 +241,7 @@ library
     cbits/falcon-padded-512/common/fips202.c
     cbits/cardano_slhdsa_bb6.c
     cbits/cardano_xmss_mock.c
+    cbits/xmss-compat/cardano_sha256_fast.c
     cbits/xmss-reference/hash.c
     cbits/xmss-reference/hash_address.c
     cbits/xmss-reference/params.c
@@ -350,7 +353,8 @@ library
       -DMLD_CONFIG_USE_NATIVE_BACKEND_FIPS202
 
     if arch(x86_64)
-      cc-options: -mavx2 -mbmi2 -mfma
+      -- SHA-NI is chosen at run time (see cbits/xmss-compat), so no -msha.
+      cc-options: -mavx2 -mbmi2 -mfma -DCARDANO_XMSS_SHANI
       asm-options: -mavx2 -mbmi2
 
   if flag(secp256k1-support)
