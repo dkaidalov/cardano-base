@@ -44,15 +44,14 @@ extra-source-files:
   cbits/falcon-padded-512/avx2/*.h
   cbits/cardano_slhdsa_bb6.h
   cbits/sphincsplus-ref/LICENSE
-  cbits/sphincsplus-ref/LICENSES/*
+  cbits/sphincsplus-ref/LICENSES/*.txt
   cbits/sphincsplus-ref/UPSTREAM_COMMIT
   cbits/sphincsplus-ref/Makefile
-  cbits/sphincsplus-ref/README.md
   cbits/sphincsplus-ref/*.c
   cbits/sphincsplus-ref/*.h
   cbits/sphincsplus-ref/params/*.h
   cbits/sphincsplus-sha2-avx2/LICENSE
-  cbits/sphincsplus-sha2-avx2/LICENSES/*
+  cbits/sphincsplus-sha2-avx2/LICENSES/*.txt
   cbits/sphincsplus-sha2-avx2/UPSTREAM_COMMIT
   cbits/sphincsplus-sha2-avx2/Makefile
   cbits/sphincsplus-sha2-avx2/*.c
