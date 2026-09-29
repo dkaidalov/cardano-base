@@ -2,13 +2,24 @@
  * Thin wrapper over PQClean's falcon-padded-512 (cbits/falcon-padded-512)
  * for the Falcon-512 DSIGN instance in Cardano.Crypto.DSIGN.Falcon512.
  *
- * Key generation is derived from a 32-byte seed (the seed is absorbed into
- * the SHAKE256 that drives PQClean's keygen). Signing is deterministic: the
- * 40-byte nonce and the 48-byte sampler seed are both derived from
- * SHAKE256(domain || sk || m). Falcon as specified draws both at random;
- * the deterministic derivation keeps the pure DSIGN API honest and does not
- * change signing or verification cost. Signatures use the padded,
- * fixed-length encoding (666 bytes).
+ * BENCHMARK-GRADE ONLY, NOT FOR PRODUCTION. Two deliberate departures from
+ * Falcon as specified (and from the FN-DSA draft), neither of them
+ * standardised or security-reviewed:
+ *
+ *  - Key generation is derived from a 32-byte seed: the seed is absorbed
+ *    into the SHAKE256 that drives PQClean's keygen. Falcon itself defines
+ *    no seed-to-key mapping; keys come from an RNG.
+ *  - Signing is deterministic: the 40-byte nonce and the 48-byte Gaussian
+ *    sampler seed are both derived from SHAKE256(domain || sk || m) instead
+ *    of being drawn fresh. Invisible to verifiers (the nonce is in the
+ *    signature), unchanged cost, but it forgoes the hedging that fresh
+ *    randomness gives against fault and multi-trace side-channel attacks,
+ *    and its security for Falcon has not been proven.
+ *
+ * Both exist so that the pure DSIGN API (genKeyDSIGN from a seed, signDSIGN
+ * as a function) can be implemented and timed. The constant-time question
+ * for the floating-point sampler is inherited from PQClean as is.
+ * Signatures use the padded, fixed-length encoding (666 bytes).
  *
  * The in-memory sign key is seed || sk || pk; only the seed is serialised.
  */
