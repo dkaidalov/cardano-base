@@ -166,7 +166,6 @@ library
     Cardano.Crypto.KES.HashedSingle
     Cardano.Crypto.KES.Mock
     Cardano.Crypto.KES.NeverUsed
-    Cardano.Crypto.KES.Padded
     Cardano.Crypto.KES.Simple
     Cardano.Crypto.KES.Single
     Cardano.Crypto.KES.Sum
@@ -193,6 +192,7 @@ library
     Cardano.Crypto.VRF
     Cardano.Crypto.VRF.Class
     Cardano.Crypto.VRF.Mock
+    Cardano.Crypto.VRF.Padded
     Cardano.Crypto.VRF.NeverUsed
     Cardano.Crypto.VRF.Simple
     Cardano.Crypto.XMSS.C

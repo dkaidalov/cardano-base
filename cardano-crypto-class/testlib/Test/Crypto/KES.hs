@@ -106,12 +106,6 @@ tests lock =
     testKESAlgorithm @(CompactSum1KES MLDSA44DSIGN Blake2b_256) lock "CompactSum1KES MLDSA44"
     testKESAlgorithm @(CompactSum2KES MLDSA44DSIGN Blake2b_256) lock "CompactSum2KES MLDSA44"
     testKESAlgorithm @(HashedCompactSum1KES Ed25519DSIGN Blake2b_256) lock "HashedCompactSum1KES"
-    testKESAlgorithm @(PaddedKES 0 0 (Sum1KES Ed25519DSIGN Blake2b_256)) lock "PaddedKES 0 0 Sum1KES"
-    testKESAlgorithm @(PaddedKES 100 0 (Sum1KES Ed25519DSIGN Blake2b_256)) lock "PaddedKES 100 0 Sum1KES"
-    testKESAlgorithm @(PaddedKES 7 200 (CompactSum1KES Ed25519DSIGN Blake2b_256)) lock "PaddedKES 7 200us CompactSum1KES"
-    testKESAlgorithm @(PaddedKES 3636 0 (HashedCompactSum1KES MLDSA44DSIGN Blake2b_256))
-      lock
-      "PaddedKES 3636 0 HashedCompactSum1KES MLDSA44"
     testKESAlgorithm @(HashedCompactSum2KES Ed25519DSIGN Blake2b_256) lock "HashedCompactSum2KES"
     testKESAlgorithm @(HashedCompactSum1KES MLDSA44DSIGN Blake2b_256)
       lock
@@ -165,13 +159,6 @@ testSigSizes =
       fixedSize (Proxy @(SigKES (CompactSum6KES MLDSA44DSIGN Blake2b_256))) `shouldBe` 5204
     it "HashedCompactSum6KES MLDSA44 = 3924" $
       fixedSize (Proxy @(SigKES (HashedCompactSum6KES MLDSA44DSIGN Blake2b_256))) `shouldBe` 3924
-    it "PaddedKES 100 0 Sum6KES Ed25519" $
-      fixedSize (Proxy @(SigKES (PaddedKES 100 0 (Sum6KES Ed25519DSIGN Blake2b_256)))) `shouldBe` 548
-    it "PaddedKES 3636 0 HashedCompactSum6KES MLDSA44" $
-      fixedSize (Proxy @(SigKES (PaddedKES 3636 0 (HashedCompactSum6KES MLDSA44DSIGN Blake2b_256)))) `shouldBe` 7560
-    it "PaddedKES rejects non-zero padding" $
-      let sig = BS.replicate 448 1 <> BS.replicate 99 0 <> BS.singleton 1
-       in (rawDecodeFixedSized sig :: Maybe (SigKES (PaddedKES 100 0 (Sum6KES Ed25519DSIGN Blake2b_256)))) `shouldBe` Nothing
     it "HashedCompactSum6KES Falcon512 = 1755" $
       fixedSize (Proxy @(SigKES (HashedCompactSum6KES Falcon512DSIGN Blake2b_256))) `shouldBe` 1755
     it "HashedCompactSum6KES SlhDsaBb6 = 3584" $
@@ -206,11 +193,6 @@ instance Show (SignKeyKES (CompactSumKES h d)) where
   show _ = "<SignKeyCompactSumKES>"
 
 deriving via (PureEqST (SignKeyKES (MockKES t))) instance EqST (SignKeyKES (MockKES t))
-
-instance Show (SignKeyKES (PaddedKES pad spinUs k)) where
-  show _ = "<SignKeyPaddedKES>"
-
-deriving newtype instance EqST (SignKeyKES k) => EqST (SignKeyKES (PaddedKES pad spinUs k))
 
 deriving newtype instance EqST (SignKeyDSIGNM d) => EqST (SignKeyKES (SingleKES d))
 

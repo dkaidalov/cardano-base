@@ -11,7 +11,7 @@ module Test.Crypto.VRF (
 )
 where
 
-import Cardano.Binary.FixedSizeCodec (FixedSizeCodec (..))
+import Cardano.Binary.FixedSizeCodec (FixedSizeCodec (..), fixedSize)
 import Cardano.Crypto.Util
 import Cardano.Crypto.VRF
 import Cardano.Crypto.VRF.Praos
@@ -51,6 +51,17 @@ tests =
     testVRFAlgorithm (Proxy :: Proxy MockVRF) "MockVRF"
     testVRFAlgorithm (Proxy :: Proxy SimpleVRF) "SimpleVRF"
     testVRFAlgorithm (Proxy :: Proxy PraosVRF) "PraosVRF"
+    testVRFAlgorithm (Proxy :: Proxy (PaddedVRF 0 PraosVRF)) "PaddedVRF 0 PraosVRF"
+    testVRFAlgorithm (Proxy :: Proxy (PaddedVRF 1000 PraosVRF)) "PaddedVRF 1000 PraosVRF"
+    describe "PaddedVRF sizes" $ do
+      it "proof is the inner proof plus the padding" $
+        fixedSize (Proxy :: Proxy (CertVRF (PaddedVRF 1000 PraosVRF))) @?= 1080
+      it "keys are the inner keys" $ do
+        fixedSize (Proxy :: Proxy (VerKeyVRF (PaddedVRF 1000 PraosVRF))) @?= 32
+        fixedSize (Proxy :: Proxy (SignKeyVRF (PaddedVRF 1000 PraosVRF))) @?= 64
+      it "rejects non-zero padding" $
+        (rawDecodeFixedSized (BS.replicate 80 1 <> BS.replicate 999 0 <> BS.singleton 1)
+           :: Maybe (CertVRF (PaddedVRF 1000 PraosVRF))) @?= Nothing
     testVRFAlgorithm (Proxy :: Proxy PraosBatchCompatVRF) "PraosBatchCompatVRF"
     describe "OutputVRF" $ do
       prop "bytesToNatural" prop_bytesToNatural

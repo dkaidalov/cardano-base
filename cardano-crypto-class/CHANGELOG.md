@@ -2,10 +2,9 @@
 
 ## Unreleased (pq-kes branch)
 
-* Add `PaddedKES pad spinUs k`, a benchmarking wrapper around any KES scheme
-  that appends `pad` zero bytes to every signature and busy-waits `spinUs`
-  microseconds after each successful verification. Keys and key evolution
-  pass through unchanged. For test-network experiments only.
+* Add `PaddedVRF pad v`, a benchmarking wrapper around any VRF that appends
+  `pad` zero bytes to every proof. Keys and outputs pass through unchanged.
+  For test-network experiments only.
 * Add `Falcon512DSIGN`, `SlhDsaBb6DSIGN` and `XmssMockDSIGN` benchmark-grade
   leaves, and `HashedSingleKES` with the `HashedCompactSumNKES` aliases.
 * Fix the C shims for Falcon, SLH-DSA and XMSS to include their vendored

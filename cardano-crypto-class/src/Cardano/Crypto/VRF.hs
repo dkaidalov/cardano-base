@@ -6,5 +6,6 @@ where
 
 import Cardano.Crypto.VRF.Class as X
 import Cardano.Crypto.VRF.Mock as X
+import Cardano.Crypto.VRF.Padded as X
 import Cardano.Crypto.VRF.NeverUsed as X
 import Cardano.Crypto.VRF.Simple as X
